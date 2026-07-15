@@ -1,0 +1,47 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>TagoClip: C++ vs. Python, Clone-Check gegen Fruity</title>
+<style>
+  body { font: 15px/1.5 -apple-system, sans-serif; max-width: 640px;
+         margin: 3rem auto; color: #ddd; background: #16181c; }
+  h1 { font-size: 1.1rem; } p { color: #888; }
+  .row { display: flex; gap: .6rem; align-items: center; padding: .35rem 0;
+          border-bottom: 1px solid #24272d; }
+  .row span { flex: 1; }
+  button { background: #24272d; color: #ddd; border: 0; border-radius: 4px;
+            padding: .3rem .9rem; cursor: pointer; }
+  button.playing { background: #3a7bd5; color: #fff; }
+</style>
+<h1>TagoClip: C++ vs. Python, Clone-Check gegen Fruity</h1>
+<p>A/B wechselt an gleicher Stelle im File. Nochmal klicken stoppt.</p>
+<div class="row"><span>chain_808glue</span><button data-src="audio/chain_808glue_A_python.wav">A</button><button data-src="audio/chain_808glue_B_cpp.wav">B</button></div>
+<div class="row"><span>clone_sine_1k_hot</span><button data-src="audio/clone_sine_1k_hot_A_fruity_original.wav">A</button><button data-src="audio/clone_sine_1k_hot_B_tagoclip_cpp.wav">B</button></div>
+<div class="row"><span>clone_sine_5k_hot</span><button data-src="audio/clone_sine_5k_hot_A_fruity_original.wav">A</button><button data-src="audio/clone_sine_5k_hot_B_tagoclip_cpp.wav">B</button></div>
+<div class="row"><span>clone_transients</span><button data-src="audio/clone_transients_A_fruity_original.wav">A</button><button data-src="audio/clone_transients_B_tagoclip_cpp.wav">B</button></div>
+<div class="row"><span>delta_listen</span><button data-src="audio/delta_listen_A_python.wav">A</button><button data-src="audio/delta_listen_B_cpp.wav">B</button></div>
+<div class="row"><span>fruity_1to1</span><button data-src="audio/fruity_1to1_A_python.wav">A</button><button data-src="audio/fruity_1to1_B_cpp.wav">B</button></div>
+<div class="row"><span>monolow_only</span><button data-src="audio/monolow_only_A_python.wav">A</button><button data-src="audio/monolow_only_B_cpp.wav">B</button></div>
+<div class="row"><span>os4_hard</span><button data-src="audio/os4_hard_A_python.wav">A</button><button data-src="audio/os4_hard_B_cpp.wav">B</button></div>
+<div class="row"><span>os8_default</span><button data-src="audio/os8_default_A_python.wav">A</button><button data-src="audio/os8_default_B_cpp.wav">B</button></div>
+<div class="row"><span>tanh_os8</span><button data-src="audio/tanh_os8_A_python.wav">A</button><button data-src="audio/tanh_os8_B_cpp.wav">B</button></div>
+<script>
+  const player = new Audio();
+  let active = null;
+  document.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (active === btn) { player.pause(); mark(null); return; }
+      const sameItem = active && active.closest(".row") === btn.closest(".row");
+      const t = sameItem ? player.currentTime : 0;
+      player.src = btn.dataset.src;
+      player.currentTime = t;
+      player.play();
+      mark(btn);
+    });
+  });
+  player.addEventListener("ended", () => mark(null));
+  function mark(btn) {
+    document.querySelectorAll("button.playing").forEach(b => b.classList.remove("playing"));
+    if (btn) btn.classList.add("playing");
+    active = btn;
+  }
+</script>

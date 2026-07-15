@@ -1,0 +1,11 @@
+TagoClip: C++ render (TagoClipRender) vs. tagodsp Python reference.
+Target listening RMS: -18.0 dB (shared gain per pair, relative levels preserved).
+Delta bounces normalized separately to -24 dB RMS, gain noted per item above.
+
+Golden pairs: A = python (golden/refs), B = cpp (golden/out), same synthetic test signal.
+First 64 samples cropped from all golden pairs and their deltas: known,
+understood scipy-vs-streaming-resampler pre-ring truncation right after reset
+(see golden/compare.py EDGE_SKIP), not an audible issue, would just be a click at t=0.
+
+Clone-check pairs: A = real FL Studio Fruity Soft Clipper bounce (measure/exports),
+B = TagoClip C++ render of the same dry input at the matching threshold.
