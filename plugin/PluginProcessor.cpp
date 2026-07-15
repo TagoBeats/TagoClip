@@ -44,9 +44,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout TagoClipProcessor::createLay
         juce::ParameterID { curve, 1 }, "Curve",
         juce::StringArray { "Default", "Hard", "Tanh" }, 0));
 
+    // Default off: the honest Fruity 1:1 mode (Robin, 15.07.2026). The UI
+    // button cycles off -> 4x -> 8x -> off.
     layout.add (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { oversampling, 1 }, "Oversampling",
-        juce::StringArray { "Off", "4x", "8x" }, 2));
+        juce::StringArray { "Off", "4x", "8x" }, 0));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { output, 1 }, "Output",

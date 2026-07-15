@@ -16,7 +16,7 @@ struct Parameters
     curves::Type curve = curves::Type::fl;
     int thresholdSteps = 100; // t = steps / 128, Fruity scale
     float driveDb = 0.0f;
-    int oversample = 8;       // 1, 4 or 8
+    int oversample = 1;       // 1, 4 or 8; default off (Robin, 15.07.2026)
     float outputDb = 0.0f;
     float monoLow = 0.0f;     // normalized log sweep, < 0.03 = off, freq = 20 * 20^v Hz
     bool delta = false;
@@ -49,7 +49,8 @@ private:
 
 // Signal chain, mirrored 1:1 by golden/make_reference.py:
 //   mono-low (LR4, pre clipper) -> drive -> curve with oversampling
-//   -> optional delta (wet minus driven dry) -> output gain
+//   -> optional delta (driven dry minus wet, i.e. exactly what the curve
+//      removed, in positive polarity) -> output gain
 // Latency is a constant 20 samples in every mode: the resampler pair costs
 // 10 + 10, the os-off path is delayed to match so toggling never moves PDC
 // (hosts compensate, the Fruity 1:1 null test still works).
@@ -127,7 +128,7 @@ public:
                 }
 
                 const float dryDelayed = st.deltaDelay.process (driven);
-                data[i] = (params.delta ? wet - dryDelayed : wet) * go;
+                data[i] = (params.delta ? dryDelayed - wet : wet) * go;
             }
         }
     }

@@ -6,7 +6,8 @@ tolerance in the manifest, see compare.py. Signal chain, in this order and
 mirrored 1:1 by plugin/ClipEngine.h:
 
     mono-low (LR4, pre clipper) -> drive -> curve with oversampling
-    -> optional delta (wet minus driven dry) -> output gain
+    -> optional delta (driven dry minus wet, exactly what the curve removed)
+    -> output gain
 
 Run with the tagodsp venv python:
     ~/Documents/tagodsp/.venv/bin/python golden/make_reference.py
@@ -79,7 +80,7 @@ def render(cfg: dict, x: np.ndarray) -> np.ndarray:
     clip = Clipper(cfg["curve"], cfg["threshold"] / 128.0, cfg["os"], drive_db=cfg["drive"])
     wet = np.column_stack([clip.process(y[:, c]) for c in range(2)])
     if cfg["delta"]:
-        wet = wet - y * db_to_lin(cfg["drive"])
+        wet = y * db_to_lin(cfg["drive"]) - wet
     return wet * db_to_lin(cfg["output"])
 
 
