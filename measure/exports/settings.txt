@@ -1,0 +1,40 @@
+Messung Fruity Soft Clipper, 15.07.2026
+FL Studio, 44100 Hz, Renders 32-bit float stereo (L==R, mono ausgewertet)
+
+Renders:
+  full_dry.wav          Clipper bypassed
+  full_thr_default.wav  Threshold auf Plugin-Default, Post-Gain Default
+  full_thr_high.wav     Threshold Maximum, Post-Gain Default
+  full_thr_low30.wav    Threshold 30%, Post-Gain Default
+
+Gain-Staging (aus dem Dry-Render bestimmt, nicht nachtraeglich aendern):
+  Pre-Clipper-Gain der Kette: 1.814847 (+5.18 dB), vermutlich Channel-Volume
+  Post-Clipper-Kette: unity (Clip-Ceiling in allen Renders exakt 1.0)
+  Dry-Residual nach Gain-Fit: 1.2e-07 (Float32-Rauschen, Kette sonst transparent)
+  => Effektiver Clipper-Input = 1.814847 * Signal-File
+  => Ramp deckt damit Input-Bereich +-3.63 ab
+
+Signal-Offsets im Bounce (Segment-Starts, Sekunden):
+  01_ramp_transfer   0.00 (Sample-Offset 0, exakt)
+  02_sine_1k_0dB     10.26
+  03_sine_1k_+6dB    17.12
+  04_sine_100Hz_+6dB 23.98
+  05_sine_5k_+6dB    30.83
+  06_transients      37.69
+
+Nachmessung Post-Gain (15.07. nachmittags, kompletter Neubounce, Ketten-Gain exakt 1.0):
+  full_post_bypass.wav     Referenz, Peak 2.0
+  full_post_default80.wav  Post 80% (Default): EXAKT unity, Residuum 3.5e-8
+  full_post_low50.wav      Post 50%:  g = 0.347580 (-9.179 dB), rein linear (Residuum 2.6e-8)
+  full_post_max100.wav     Post 100%: g = 1.903277 (+5.590 dB), rein linear (Residuum 1.2e-7)
+
+ERGEBNIS: Post-Gain ist ein simpler linearer Gain hinter der Kurve (pegelunabhaengig).
+Die Knob-Skala %->Gain ist aber nichtlinear (weder linear in Amplitude noch in dB),
+vermutlich die generische FL-Volume-Knob-Kurve. Fuer eine exakte Skalen-Replikation
+braeuchte es weitere Stuetzpunkte; fuer TagoClip reicht: Output-Knob in dB,
+Default 0 dB = Fruity-Default. (Erster Versuch der Nachmessung war unbrauchbar,
+low50/max100 waren bypassed gerendert; mit Neubounce behoben.)
+
+Erste Beobachtung: Clip-Ceiling ist bei allen drei Threshold-Settings ~1.0.
+Threshold skaliert also nicht das Ceiling, sondern verschiebt vermutlich den
+Knie-Punkt bei fixem 0-dB-Ceiling (in der Auswertung verifizieren).

@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TagoClip — UI Mockup v1</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* TagoBeats design tokens (00 Kontext/TagoBeats Branding.md), same set as TagoPitch */
+  :root {
+    --bg:        #12100E;
+    --bg-deep:   #0A0908;
+    --surface:   #1A1815;
+    --text:      #ECE7DE;
+    --text-hi:   #F2EEE6;
+    --accent:    #00FDDC;
+    --accent-2:  #00D2C4;
+    --hairline:  rgba(236, 231, 222, 0.14);
+    --dim:       rgba(236, 231, 222, 0.45);
+    --faint:     rgba(236, 231, 222, 0.24);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px;
+    background: var(--bg-deep);
+    font-family: "Archivo", sans-serif;
+    color: var(--text);
+  }
+  .caption {
+    font-family: "Space Mono", monospace;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  /* ---------- Plugin window: fixed 620 x 380 ---------- */
+  #plugin {
+    position: relative;
+    width: 620px; height: 380px;
+    background: var(--bg);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    overflow: hidden;
+    user-select: none;
+    display: flex; flex-direction: column;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  }
+  #plugin::before {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(420px 300px at 108% 118%, rgba(0, 210, 196, 0.14), transparent 62%),
+      radial-gradient(340px 240px at -10% -18%, rgba(0, 253, 220, 0.06), transparent 60%),
+      radial-gradient(120% 120% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.38) 100%);
+    pointer-events: none;
+    z-index: 2;
+  }
+  #plugin::after {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2"/></filter><rect width="160" height="160" filter="url(%23n)" opacity="0.5"/></svg>');
+    opacity: 0.13;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* ---------- Header (same pattern as TagoPitch) ---------- */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid var(--hairline);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    position: relative; z-index: 1;
+  }
+  .wordmark {
+    font-weight: 800; font-size: 20px;
+    letter-spacing: -0.035em;
+    color: var(--text-hi);
+    line-height: 0.9;
+    white-space: nowrap;
+  }
+  .preset {
+    display: flex; align-items: center; gap: 2px;
+    background: var(--bg-deep);
+    border: 1px solid var(--hairline);
+    border-radius: 5px;
+    padding: 3px 4px;
+    font-family: "Space Mono", monospace;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+  }
+  .preset button {
+    background: none; border: 0; color: var(--dim);
+    font: 700 11px "Space Mono", monospace;
+    padding: 2px 7px; cursor: pointer;
+  }
+  .preset button:hover { color: var(--accent); }
+  .preset .name {
+    min-width: 118px; text-align: center;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--text);
+  }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .header-meta {
+    font-family: "Space Mono", monospace;
+    font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+  #power {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1px solid var(--hairline);
+    background: var(--bg-deep);
+    color: var(--accent);
+    cursor: pointer;
+    display: grid; place-items: center;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 253, 220, 0.25);
+  }
+  #power svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+  #plugin.bypassed #power { color: var(--faint); box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
+
+  /* ---------- Main deck ---------- */
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 288px 1fr auto 58px;
+    gap: 10px;
+    align-items: center;
+    justify-items: center;
+    padding: 10px 14px 8px 16px;
+    position: relative; z-index: 1;
+    background-image: radial-gradient(rgba(236, 231, 222, 0.05) 1px, transparent 1.2px);
+    background-size: 22px 22px;
+    background-position: 11px 8px;
+    transition: opacity 0.15s;
+  }
+  #plugin.bypassed main { opacity: 0.35; }
+
+  /* --- Curve display: the hero --- */
+  .scope-unit {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  #scope-wrap {
+    position: relative;
+    flex: 1;
+    background: var(--bg-deep);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+  }
+  #scope { display: block; width: 100%; height: 100%; }
+  #delta-btn {
+    position: absolute; top: 7px; right: 7px;
+    font: 700 9px "Space Mono", monospace;
+    letter-spacing: 0.18em;
+    color: var(--dim);
+    background: var(--bg);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    z-index: 1;
+  }
+  #delta-btn.on {
+    color: var(--bg-deep);
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(0, 253, 220, 0.45);
+  }
+
+  /* --- Chip rows (curve / oversampling) --- */
+  .chip-rows { display: flex; flex-direction: column; gap: 6px; }
+  .chip-row { display: flex; align-items: center; gap: 6px; }
+  .chip-row .chip-caption {
+    width: 46px;
+    font: 700 9px "Space Mono", monospace;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--faint);
+  }
+  .chip {
+    flex: 1;
+    font: 700 10px "Space Mono", monospace;
+    letter-spacing: 0.16em;
+    text-align: center;
+    color: var(--dim);
+    background: var(--bg-deep);
+    border: 1px solid var(--hairline);
+    border-radius: 5px;
+    padding: 5px 0;
+    cursor: pointer;
+  }
+  .chip:hover { color: var(--text); }
+  .chip.on {
+    color: var(--accent);
+    border-color: rgba(0, 253, 220, 0.55);
+    box-shadow: inset 0 0 8px rgba(0, 253, 220, 0.12), 0 0 8px rgba(0, 253, 220, 0.18);
+  }
+
+  /* --- Knobs (identical classes to TagoPitch) --- */
+  .knob-col {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px;
+  }
+  .knob-unit {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    cursor: ns-resize;
+    touch-action: none;
+  }
+  .knob-unit svg { display: block; }
+  .knob-label {
+    font-family: "Space Mono", monospace;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.28em; text-transform: uppercase;
+    color: var(--dim);
+    margin-top: 2px;
+  }
+  .knob-value {
+    font-family: "Space Mono", monospace;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    min-height: 18px;
+  }
+  .knob-unit:hover .knob-label { color: var(--text); }
+
+  .stack {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    height: 100%; padding-top: 16px;
+  }
+  #os-toggle {
+    /* pushed to the bottom edge so it lines up with the curve chip row */
+    margin-top: auto;
+    margin-bottom: 1px;
+    font: 700 8.5px "Space Mono", monospace;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--dim);
+    background: var(--bg-deep);
+    border: 1px solid var(--hairline);
+    border-radius: 5px;
+    padding: 6px 9px;
+    cursor: pointer;
+  }
+  #os-toggle:hover { color: var(--text); }
+  #os-toggle.on {
+    color: var(--accent);
+    border-color: rgba(0, 253, 220, 0.55);
+    box-shadow: inset 0 0 8px rgba(0, 253, 220, 0.12), 0 0 8px rgba(0, 253, 220, 0.18);
+  }
+  .stack .knob-unit { gap: 2px; }
+  .stack #monolow { margin-top: 22px; }
+  .stack .knob-value { font-size: 11px; min-height: 14px; }
+  .stack .knob-label { font-size: 9.5px; letter-spacing: 0.22em; margin-top: 0; }
+
+  .track   { stroke: rgba(236, 231, 222, 0.12); fill: none; }
+  .fill    { stroke: var(--accent); fill: none;
+             filter: drop-shadow(0 0 5px rgba(0, 253, 220, 0.55)); }
+  .face    { stroke: var(--hairline); }
+  .bezel   { stroke: rgba(236, 231, 222, 0.22); }
+  .tick    { stroke: rgba(236, 231, 222, 0.22); stroke-linecap: round; }
+  .pointer { stroke: var(--text-hi); stroke-linecap: round; }
+  .detent  { fill: var(--faint); }
+
+  /* ---------- Meters ---------- */
+  .meter-unit { height: 82%; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .meter-pair { flex: 1; display: flex; gap: 7px; }
+  .meter-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .meter {
+    flex: 1; width: 7px;
+    border-radius: 4px;
+    background: var(--bg-deep);
+    border: 1px solid var(--hairline);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+    position: relative;
+    overflow: hidden;
+  }
+  .meter .bar {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 0%;
+    background: linear-gradient(to top, var(--accent-2), var(--accent));
+    box-shadow: 0 0 8px rgba(0, 253, 220, 0.5);
+  }
+  .meter .peak {
+    position: absolute; left: 0; right: 0;
+    height: 1.5px; bottom: 0%;
+    background: var(--text-hi);
+    opacity: 0.8;
+  }
+  .meter-label {
+    font-family: "Space Mono", monospace;
+    font-size: 9px; font-weight: 700;
+    letter-spacing: 0.24em; text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  /* ---------- Footer ---------- */
+  footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 22px;
+    border-top: 1px solid var(--hairline);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    font-family: "Space Mono", monospace;
+    font-size: 9.5px; letter-spacing: 0.24em; text-transform: uppercase;
+    color: var(--faint);
+    position: relative; z-index: 1;
+  }
+  footer b { font-weight: 400; color: var(--dim); }
+</style>
+</head>
+<body>
+
+<div id="plugin">
+  <header>
+    <div class="wordmark">TAGOCLIP</div>
+    <div class="preset">
+      <button id="prev" title="Previous preset">‹</button>
+      <div class="name" id="preset-name">INIT</div>
+      <button id="next" title="Next preset">›</button>
+    </div>
+    <div class="header-right">
+      <span class="header-meta">Stereo&nbsp;·&nbsp;V1</span>
+      <button id="power" title="Bypass">
+        <svg viewBox="0 0 24 24"><path d="M12 3v8"/><path d="M6.2 6.2a8 8 0 1 0 11.6 0"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="scope-unit">
+      <div id="scope-wrap">
+        <button id="delta-btn" title="Nur das Abgeschnittene hören">Δ DELTA</button>
+        <svg id="scope"></svg>
+      </div>
+      <div class="chip-rows">
+        <div class="chip-row" id="curve-row">
+          <span class="chip-caption">Curve</span>
+          <button class="chip on" data-curve="fl">DEFAULT</button>
+          <button class="chip" data-curve="hard">HARD</button>
+          <button class="chip" data-curve="tanh">TANH</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="knob-col">
+      <div class="knob-unit" id="threshold"></div>
+      <div class="knob-unit" id="drive"></div>
+    </div>
+
+    <div class="stack">
+      <div class="knob-unit" id="output"></div>
+      <div class="knob-unit" id="monolow"></div>
+      <button id="os-toggle" class="on" title="8x Oversampling gegen Aliasing">Oversampling</button>
+    </div>
+
+    <div class="meter-unit">
+      <div class="meter-pair">
+        <div class="meter-col">
+          <div class="meter" id="meter-in"><div class="bar"></div><div class="peak"></div></div>
+          <div class="meter-label">In</div>
+        </div>
+        <div class="meter-col">
+          <div class="meter" id="meter-out"><div class="bar"></div><div class="peak"></div></div>
+          <div class="meter-label">Out</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <span>TagoBeats</span>
+    <span id="footer-meta"><b>OS 8X · 0.9 MS</b></span>
+  </footer>
+</div>
+
+<div class="caption">Mockup · Plugin-Fenster 620 × 380 · Seed für JUCE-8-WebView</div>
+
+<script>
+/* Knob class carried over from the TagoPitch mockup (same interactions:
+   vertical drag, shift = fine, wheel, double-click reset). */
+
+const SWEEP = 270;
+const START = -135;
+
+function polar(cx, cy, r, deg) {
+  const rad = (deg - 90) * Math.PI / 180;
+  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+}
+function arcPath(cx, cy, r, a0, a1) {
+  if (Math.abs(a1 - a0) < 0.01) return "";
+  const [x0, y0] = polar(cx, cy, r, a0);
+  const [x1, y1] = polar(cx, cy, r, a1);
+  const large = Math.abs(a1 - a0) > 180 ? 1 : 0;
+  const swp = a1 > a0 ? 1 : 0;
+  return `M ${x0} ${y0} A ${r} ${r} 0 ${large} ${swp} ${x1} ${y1}`;
+}
+
+let knobSeq = 0;
+
+class Knob {
+  constructor(el, opts) {
+    Object.assign(this, {
+      min: 0, max: 1, def: 0, step: 0,
+      bipolar: false, size: 96, unit: "",
+      label: null,
+      onchange: null,
+      fmt: v => v.toFixed(2) + " " + this.unit,
+    }, opts);
+    this.el = el;
+    this.value = this.def;
+    this.r = this.size / 2 - 7;
+    this.build();
+    this.bind();
+    this.render();
+  }
+
+  build() {
+    const s = this.size, c = s / 2;
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("width", s); svg.setAttribute("height", s);
+    svg.setAttribute("viewBox", `0 0 ${s} ${s}`);
+
+    const gid = `face-g${knobSeq++}`;
+    const defs = document.createElementNS(ns, "defs");
+    defs.innerHTML =
+      `<radialGradient id="${gid}-deep" cx="0.5" cy="0.28" r="0.9">` +
+      `<stop offset="0" stop-color="#2E2921"/><stop offset="0.45" stop-color="#1C1916"/>` +
+      `<stop offset="0.85" stop-color="#0E0C0B"/><stop offset="1" stop-color="#080707"/>` +
+      `</radialGradient>` +
+      `<linearGradient id="${gid}-bezel" x1="0" y1="0" x2="0" y2="1">` +
+      `<stop offset="0" stop-color="#3A352C"/><stop offset="0.5" stop-color="#15130F"/>` +
+      `<stop offset="1" stop-color="#2A261F"/>` +
+      `</linearGradient>`;
+    svg.appendChild(defs);
+
+    const mk = (tag, cls) => {
+      const n = document.createElementNS(ns, tag);
+      n.setAttribute("class", cls);
+      svg.appendChild(n);
+      return n;
+    };
+
+    const small = this.size < 80;
+    const nTicks = small ? 12 : 24;
+    for (let i = 0; i <= nTicks; i++) {
+      const ang = START + (i / nTicks) * SWEEP;
+      const major = i % (nTicks / 4) === 0;
+      const [tx0, ty0] = polar(c, c, this.r + (major ? 1 : 2), ang);
+      const [tx1, ty1] = polar(c, c, this.r + 5, ang);
+      const t = mk("line", "tick");
+      t.setAttribute("x1", tx0); t.setAttribute("y1", ty0);
+      t.setAttribute("x2", tx1); t.setAttribute("y2", ty1);
+      t.setAttribute("stroke-width", major ? 1.6 : 1);
+    }
+
+    this.track = mk("path", "track");
+    this.track.setAttribute("d", arcPath(c, c, this.r, START, START + SWEEP));
+    this.track.setAttribute("stroke-width", 3);
+
+    this.fillArc = mk("path", "fill");
+    this.fillArc.setAttribute("stroke-width", 3);
+
+    const bezel = mk("circle", "bezel");
+    bezel.setAttribute("cx", c); bezel.setAttribute("cy", c);
+    bezel.setAttribute("r", this.r * 0.85);
+    bezel.setAttribute("fill", `url(#${gid}-bezel)`);
+    bezel.setAttribute("stroke-width", 1);
+
+    this.faceEl = mk("circle", "face");
+    this.faceEl.setAttribute("cx", c); this.faceEl.setAttribute("cy", c);
+    this.faceEl.setAttribute("r", this.r * 0.72);
+    this.faceEl.setAttribute("fill", `url(#${gid}-deep)`);
+
+    if (this.bipolar) {
+      const d = mk("circle", "detent");
+      const [dx, dy] = polar(c, c, this.r, 0);
+      d.setAttribute("cx", dx); d.setAttribute("cy", dy - 4);
+      d.setAttribute("r", 1.6);
+    }
+
+    this.pointerEl = mk("line", "pointer");
+    this.pointerEl.setAttribute("stroke-width", small ? 3 : 4);
+
+    const label = document.createElement("div");
+    label.className = "knob-value";
+    this.valueEl = label;
+
+    const name = document.createElement("div");
+    name.className = "knob-label";
+    name.textContent = this.label || this.el.id;
+
+    this.el.append(svg, label, name);
+  }
+
+  norm() { return (this.value - this.min) / (this.max - this.min); }
+
+  set(v, fine) {
+    v = Math.min(this.max, Math.max(this.min, v));
+    if (this.step && !fine) v = Math.round(v / this.step) * this.step;
+    v = Math.round(v * 100) / 100;
+    if (v !== this.value) {
+      this.value = v; this.render();
+      if (this.onchange) this.onchange(v);
+    }
+  }
+
+  render() {
+    const c = this.size / 2;
+    const ang = START + this.norm() * SWEEP;
+    const from = this.bipolar ? 0 : START;
+    this.fillArc.setAttribute("d", arcPath(c, c, this.r, Math.min(from, ang), Math.max(from, ang)));
+    const [x0, y0] = polar(c, c, this.r * 0.42, ang);
+    const [x1, y1] = polar(c, c, this.r * 0.70, ang);
+    this.pointerEl.setAttribute("x1", x0); this.pointerEl.setAttribute("y1", y0);
+    this.pointerEl.setAttribute("x2", x1); this.pointerEl.setAttribute("y2", y1);
+    this.valueEl.textContent = this.fmt(this.value);
+  }
+
+  bind() {
+    let startY = 0, startVal = 0;
+    const range = this.max - this.min;
+
+    this.el.addEventListener("pointerdown", e => {
+      startY = e.clientY; startVal = this.value;
+      this.el.setPointerCapture(e.pointerId);
+      const move = ev => {
+        const fine = ev.shiftKey;
+        const px = fine ? 900 : 220;
+        this.set(startVal + (startY - ev.clientY) * range / px, fine);
+      };
+      const up = () => {
+        this.el.removeEventListener("pointermove", move);
+        this.el.removeEventListener("pointerup", up);
+      };
+      this.el.addEventListener("pointermove", move);
+      this.el.addEventListener("pointerup", up);
+    });
+
+    this.el.addEventListener("dblclick", () => {
+      this.value = this.def; this.render();
+      if (this.onchange) this.onchange(this.value);
+    });
+
+    this.el.addEventListener("wheel", e => {
+      e.preventDefault();
+      const fine = e.shiftKey;
+      const inc = this.step || range / 48;
+      this.set(this.value - Math.sign(e.deltaY) * (fine ? inc / 4 : inc), fine);
+    }, { passive: false });
+  }
+}
+
+/* ---------- Transfer curves, 1:1 ports of tagodsp/distortion/clipper.py ---------- */
+
+const CURVES = {
+  fl: (x, t) => {
+    const ax = Math.abs(x);
+    if (ax <= t) return x;
+    return Math.sign(x) * (1 - (1 - t) * Math.exp(-(ax - t) / (1 - t)));
+  },
+  hard: (x, t) => Math.max(-t, Math.min(t, x)) / t,   // normalized so display ceiling stays 1
+  tanh: (x, t) => {
+    const ax = Math.abs(x);
+    if (ax <= t) return x;
+    return Math.sign(x) * (t + (1 - t) * Math.tanh((ax - t) / (1 - t)));
+  },
+};
+/* Display note: hard clip in the DSP ceilings at t itself; for the scope we show
+   the un-normalized shape so the knee position is honest. */
+CURVES.hard = (x, t) => Math.max(-t, Math.min(t, x));
+
+/* ---------- State ---------- */
+
+const state = {
+  curve: "fl",
+  os: 8,
+  delta: false,
+  threshold: 100 / 128,   // linear, like the DSP
+  driveDb: 0,
+};
+
+/* ---------- Scope: the hero display ---------- */
+
+const scope = document.getElementById("scope");
+const SW = 288, SH = 178;   // svg logical size
+scope.setAttribute("viewBox", `0 0 ${SW} ${SH}`);
+const XMAX = 2.2;           // input range shown, in linear amplitude
+
+function sx(v) { return SW / 2 + (v / XMAX) * (SW / 2 - 10); }
+function sy(v) { return SH / 2 - (v / 1.25) * (SH / 2 - 8); }
+
+function drawScope() {
+  const t = state.threshold;
+  const fn = CURVES[state.curve];
+  const ns = "http://www.w3.org/2000/svg";
+  scope.innerHTML = "";
+
+  const mk = (tag, attrs) => {
+    const n = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    scope.appendChild(n);
+    return n;
+  };
+
+  // grid: unity diagonal + threshold markers
+  mk("line", { x1: sx(-XMAX), y1: sy(-XMAX), x2: sx(XMAX), y2: sy(XMAX),
+               stroke: "rgba(236,231,222,0.10)", "stroke-width": 1, "stroke-dasharray": "3 4" });
+  mk("line", { x1: sx(-XMAX), y1: sy(0), x2: sx(XMAX), y2: sy(0),
+               stroke: "rgba(236,231,222,0.07)", "stroke-width": 1 });
+  mk("line", { x1: sx(0), y1: sy(-1.25), x2: sx(0), y2: sy(1.25),
+               stroke: "rgba(236,231,222,0.07)", "stroke-width": 1 });
+  // ceiling lines
+  for (const cv of [1, -1]) {
+    mk("line", { x1: sx(-XMAX), y1: sy(cv), x2: sx(XMAX), y2: sy(cv),
+                 stroke: "rgba(236,231,222,0.10)", "stroke-width": 1, "stroke-dasharray": "2 5" });
+  }
+  // threshold knee markers
+  for (const tv of [t, -t]) {
+    mk("line", { x1: sx(tv), y1: sy(-1.25), x2: sx(tv), y2: sy(1.25),
+                 stroke: "rgba(0,253,220,0.15)", "stroke-width": 1 });
+  }
+
+  // delta region: the part the clipper removes, filled between y=x and the curve
+  const steps = 160;
+  if (state.delta) {
+    let dPath = "";
+    for (let i = 0; i <= steps; i++) {
+      const x = -XMAX + (2 * XMAX * i) / steps;
+      dPath += (i ? "L" : "M") + sx(x) + " " + sy(x) + " ";
+    }
+    for (let i = steps; i >= 0; i--) {
+      const x = -XMAX + (2 * XMAX * i) / steps;
+      dPath += "L" + sx(x) + " " + sy(fn(x, t)) + " ";
+    }
+    mk("path", { d: dPath + "Z", fill: "rgba(0,253,220,0.13)", stroke: "none" });
+  }
+
+  // the transfer curve itself
+  let path = "";
+  for (let i = 0; i <= steps; i++) {
+    const x = -XMAX + (2 * XMAX * i) / steps;
+    path += (i ? "L" : "M") + sx(x) + " " + sy(fn(x, t)) + " ";
+  }
+  mk("path", { d: path, fill: "none", stroke: "var(--accent)", "stroke-width": 2,
+               style: "filter: drop-shadow(0 0 6px rgba(0,253,220,0.5))" });
+
+  // live signal dots get re-appended by the animation
+  state.dotP = mk("circle", { r: 3, fill: "var(--text-hi)",
+                              style: "filter: drop-shadow(0 0 5px rgba(0,253,220,0.9))" });
+  state.dotN = mk("circle", { r: 3, fill: "var(--text-hi)", opacity: 0.6,
+                              style: "filter: drop-shadow(0 0 5px rgba(0,253,220,0.9))" });
+}
+
+/* Animated "signal" riding the curve: an 808-ish envelope, so drive and
+   threshold changes are immediately visible. Fed by the audio thread later. */
+let phase = 0;
+function animateScope() {
+  const beat = (Date.now() / 600) % 1;
+  const env = Math.exp(-beat * 4.5);
+  phase += 0.11;
+  const drive = Math.pow(10, state.driveDb / 20);
+  const x = Math.min(XMAX, Math.max(-XMAX, drive * env * Math.sin(phase)));
+  const fn = CURVES[state.curve];
+  const y = fn(x, state.threshold);
+  const yShown = state.delta ? x - y : y;
+  state.dotP.setAttribute("cx", sx(x));
+  state.dotP.setAttribute("cy", sy(yShown));
+  state.dotN.setAttribute("cx", sx(-x));
+  state.dotN.setAttribute("cy", sy(state.delta ? -x - fn(-x, state.threshold) : fn(-x, state.threshold)));
+  requestAnimationFrame(animateScope);
+}
+
+/* ---------- Knobs ---------- */
+
+const fmtDb = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1) + " dB";
+
+const knobs = {
+  drive: new Knob(document.getElementById("drive"), {
+    min: -6, max: 24, def: 0, size: 96, label: "drive", bipolar: true,
+    fmt: fmtDb,
+    onchange: v => { state.driveDb = v; },
+  }),
+  /* Fruity scale: integer 0..127, internally t = v/128 like the original */
+  threshold: new Knob(document.getElementById("threshold"), {
+    min: 1, max: 127, def: 100, step: 1, size: 96, label: "threshold",
+    fmt: v => Math.round(v).toString(),
+    onchange: v => { state.threshold = Math.round(v) / 128; drawScope(); },
+  }),
+  output: new Knob(document.getElementById("output"), {
+    min: -12, max: 12, def: 0, size: 62, label: "output", bipolar: true,
+    fmt: fmtDb,
+  }),
+  /* logarithmic sweep: knob value is the normalized position, 20 Hz..400 Hz,
+     bottom 3% = OFF */
+  monolow: new Knob(document.getElementById("monolow"), {
+    min: 0, max: 1, def: 0, size: 62, label: "mono low",
+    fmt: v => v < 0.03 ? "OFF" : Math.round(20 * Math.pow(20, v)) + " Hz",
+  }),
+};
+
+/* ---------- Chips ---------- */
+
+function bindChips(rowId, key, apply) {
+  const row = document.getElementById(rowId);
+  row.querySelectorAll(".chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      row.querySelectorAll(".chip").forEach(c => c.classList.remove("on"));
+      chip.classList.add("on");
+      apply(chip.dataset[key]);
+    });
+  });
+}
+bindChips("curve-row", "curve", v => { state.curve = v; drawScope(); });
+
+/* Oversampling: simple on/off toggle, on = 8x. Latency shown in the footer. */
+const osToggle = document.getElementById("os-toggle");
+function setOs(on) {
+  state.os = on ? 8 : 1;
+  osToggle.classList.toggle("on", on);
+  document.getElementById("footer-meta").innerHTML =
+    `<b>OS ${on ? "8X" : "OFF"} · ${on ? "0.9" : "0.0"} MS</b>`;
+}
+osToggle.addEventListener("click", () => setOs(state.os === 1));
+
+/* ---------- Delta ---------- */
+document.getElementById("delta-btn").addEventListener("click", e => {
+  state.delta = !state.delta;
+  e.currentTarget.classList.toggle("on", state.delta);
+  drawScope();
+});
+
+/* ---------- Presets ----------
+   INIT = the Fruity Soft Clipper defaults: load TagoClip, it sounds like Fruity
+   (oversampling on by default, same tone minus the aliasing). */
+const PRESETS = [
+  ["INIT",        { drive: 0, threshold: 100, output: 0,  monolow: 0 },    "fl",   true],
+  ["808 GLUE",    { drive: 6, threshold: 84,  output: -1, monolow: 0.67 }, "fl",   true],
+  ["DRUMBUS",     { drive: 3, threshold: 92,  output: 0,  monolow: 0 },    "fl",   true],
+  ["FRUITY 1:1",  { drive: 0, threshold: 100, output: 0,  monolow: 0 },    "fl",   false],
+  ["TAPE SOFT",   { drive: 8, threshold: 51,  output: -2, monolow: 0.6 },  "tanh", true],
+];
+let presetIdx = 0;
+function applyPreset(i) {
+  presetIdx = (i + PRESETS.length) % PRESETS.length;
+  const [name, vals, curve, osOn] = PRESETS[presetIdx];
+  document.getElementById("preset-name").textContent = name;
+  for (const [k, v] of Object.entries(vals)) {
+    knobs[k].value = v; knobs[k].render();
+    if (knobs[k].onchange) knobs[k].onchange(v);
+  }
+  document.querySelectorAll("#curve-row .chip").forEach(c => c.classList.toggle("on", c.dataset.curve === curve));
+  state.curve = curve;
+  setOs(osOn);
+  drawScope();
+}
+document.getElementById("prev").addEventListener("click", () => applyPreset(presetIdx - 1));
+document.getElementById("next").addEventListener("click", () => applyPreset(presetIdx + 1));
+
+/* ---------- Bypass ---------- */
+const plugin = document.getElementById("plugin");
+document.getElementById("power").addEventListener("click", () => plugin.classList.toggle("bypassed"));
+
+/* ---------- Meters (idle animation, same as TagoPitch mockup) ---------- */
+function makeMeter(sel) {
+  const root = document.querySelector(sel);
+  return { bar: root.querySelector(".bar"), peakEl: root.querySelector(".peak"), peak: 0, age: 0 };
+}
+function drawMeter(m, shown) {
+  m.bar.style.height = (shown * 100).toFixed(1) + "%";
+  if (shown >= m.peak) { m.peak = shown; m.age = 0; }
+  else if (++m.age > 90) { m.peak *= 0.985; }
+  m.peakEl.style.bottom = (m.peak * 100).toFixed(1) + "%";
+}
+const meterIn = makeMeter("#meter-in");
+const meterOut = makeMeter("#meter-out");
+let lvl = 0.4;
+function meterTick() {
+  lvl += (0.35 + 0.35 * Math.random() - lvl) * 0.07;
+  const inShown = Math.max(0, lvl + 0.06 * Math.sin(Date.now() / 230));
+  drawMeter(meterIn, inShown);
+  if (plugin.classList.contains("bypassed")) {
+    drawMeter(meterOut, inShown);
+  } else {
+    const driven = inShown * Math.pow(10, state.driveDb / 20 * 0.5);
+    const clipped = Math.min(driven, Math.max(state.threshold, Math.min(1, driven * 0.85)));
+    const outGain = Math.pow(10, knobs.output.value / 20 * 0.5);
+    drawMeter(meterOut, Math.min(1, clipped * outGain));
+  }
+  requestAnimationFrame(meterTick);
+}
+
+drawScope();
+animateScope();
+meterTick();
+</script>
+</body>
+</html>
