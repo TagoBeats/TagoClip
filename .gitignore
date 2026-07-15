@@ -3,3 +3,6 @@ cmake-build-*/
 .DS_Store
 golden/refs/
 golden/out/
+ui/node_modules/
+ui/dist/
+ui/webui.zip

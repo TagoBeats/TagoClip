@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "PluginEditor.h"
 
 namespace
 {
@@ -145,8 +146,7 @@ void TagoClipProcessor::setStateInformation (const void* data, int sizeInBytes)
 
 juce::AudioProcessorEditor* TagoClipProcessor::createEditor()
 {
-    // Placeholder until the WebView port of mockup/index.html lands.
-    return new juce::GenericAudioProcessorEditor (*this);
+    return new TagoClipEditor (*this);
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
