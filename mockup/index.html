@@ -133,7 +133,8 @@
     gap: 10px;
     align-items: center;
     justify-items: center;
-    padding: 10px 14px 8px 16px;
+    min-height: 0;
+    padding: 8px 14px 3px 16px;
     position: relative; z-index: 1;
     background-image: radial-gradient(rgba(236, 231, 222, 0.05) 1px, transparent 1.2px);
     background-size: 22px 22px;
@@ -227,7 +228,7 @@
     font-size: 13px;
     letter-spacing: 0.08em;
     color: var(--accent);
-    min-height: 18px;
+    min-height: 16px;
   }
   .knob-unit:hover .knob-label { color: var(--text); }
 
@@ -311,7 +312,7 @@
   /* ---------- Footer ---------- */
   footer {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 11px 22px;
+    padding: 8px 22px;
     border-top: 1px solid var(--hairline);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
     font-family: "Space Mono", monospace;
@@ -415,7 +416,7 @@ class Knob {
   constructor(el, opts) {
     Object.assign(this, {
       min: 0, max: 1, def: 0, step: 0,
-      bipolar: false, size: 96, unit: "",
+      bipolar: false, size: 90, unit: "",
       label: null,
       onchange: null,
       fmt: v => v.toFixed(2) + " " + this.unit,
@@ -691,13 +692,13 @@ const fmtDb = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1) +
 
 const knobs = {
   drive: new Knob(document.getElementById("drive"), {
-    min: -6, max: 24, def: 0, size: 96, label: "drive", bipolar: true,
+    min: -6, max: 24, def: 0, size: 90, label: "drive", bipolar: true,
     fmt: fmtDb,
     onchange: v => { state.driveDb = v; },
   }),
   /* Fruity scale: integer 0..127, internally t = v/128 like the original */
   threshold: new Knob(document.getElementById("threshold"), {
-    min: 1, max: 127, def: 100, step: 1, size: 96, label: "threshold",
+    min: 1, max: 127, def: 100, step: 1, size: 90, label: "threshold",
     fmt: v => Math.round(v).toString(),
     onchange: v => { state.threshold = Math.round(v) / 128; drawScope(); },
   }),

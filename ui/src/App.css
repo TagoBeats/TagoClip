@@ -122,7 +122,7 @@ main {
   gap: 10px;
   align-items: center;
   justify-items: center;
-  padding: 10px 14px 3px 16px;
+  padding: 8px 14px 3px 16px;
   position: relative; z-index: 1;
   background-image: radial-gradient(rgba(236, 231, 222, 0.05) 1px, transparent 1.2px);
   background-size: 22px 22px;
@@ -216,7 +216,7 @@ main {
   font-size: 13px;
   letter-spacing: 0.08em;
   color: var(--accent);
-  min-height: 18px;
+  min-height: 16px;
 }
 .knob-unit:hover .knob-label { color: var(--text); }
 
@@ -299,7 +299,7 @@ main {
 /* ---------- Footer ---------- */
 footer {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 11px 22px;
+  padding: 8px 22px;
   border-top: 1px solid var(--hairline);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   font-family: "Space Mono", monospace;

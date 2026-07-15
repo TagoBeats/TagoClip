@@ -26,7 +26,7 @@ export const PARAMS: Record<string, ParamSpec> = {
     def: 0,
     step: 0,
     bipolar: true,
-    size: 96,
+    size: 90,
     fmt: fmtDb,
   },
   // Fruity scale: integer 0..127, internally t = v/128 like the original DSP.
@@ -38,7 +38,7 @@ export const PARAMS: Record<string, ParamSpec> = {
     def: 100,
     step: 1,
     bipolar: false,
-    size: 96,
+    size: 90,
     fmt: (v) => Math.round(v).toString(),
   },
   output: {
