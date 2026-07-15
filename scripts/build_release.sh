@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 # Build a signed + notarized TagoClip release installer for macOS.
 #
-# Output: dist/TagoClip-X.Y.Z.pkg — a distribution package with a format
+# Output: dist/TagoClip-X.Y.Z.dmg — a signed, notarized disk image wrapping
+# the distribution pkg (itself signed, notarized and stapled separately, so
+# it stays valid if unzipped/copied out of the dmg). The pkg has a format
 # choice screen (VST3 / AU), welcome, license and conclusion pages, installing
 #   /Library/Audio/Plug-Ins/VST3/TagoClip.vst3
 #   /Library/Audio/Plug-Ins/Components/TagoClip.component
 # as a universal binary (arm64 + x86_64).
+#
+# Mounting a dmg isn't a Downloads-folder write, so Installer.app never shows
+# the "wants access to your Downloads folder" TCC prompt that a bare pkg
+# triggers when opened straight out of Downloads.
 #
 # Prerequisites:
 #   - Developer ID Application + Developer ID Installer certs in Keychain
@@ -14,8 +20,8 @@
 #           --apple-id <apple-id> --team-id 3CU95LXM7N --password <app-specific>
 #
 # Env overrides:
-#   SKIP_NOTARIZE=1   sign + pkg only
-#   SKIP_SIGN=1       unsigned local test build of the pkg
+#   SKIP_NOTARIZE=1   sign + pkg/dmg only
+#   SKIP_SIGN=1       unsigned local test build (pkg only, no dmg)
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -30,6 +36,7 @@ NOTARIZE_PROFILE="${NOTARIZE_PROFILE:-DubCheck-Notarize}"
 
 BUILD_DIR="build-release"
 PKG_NAME="TagoClip-$VERSION.pkg"
+DMG_NAME="TagoClip-$VERSION.dmg"
 
 echo "==> TagoClip $VERSION release build"
 
@@ -125,16 +132,47 @@ else
 fi
 
 if [[ "${SKIP_NOTARIZE:-0}" != "1" && "${SKIP_SIGN:-0}" != "1" ]]; then
-    echo "==> Notarizing (this can take a few minutes)"
+    echo "==> Notarizing pkg (this can take a few minutes)"
     xcrun notarytool submit "dist/$PKG_NAME" \
         --keychain-profile "$NOTARIZE_PROFILE" \
         --wait
-    echo "==> Stapling ticket"
+    echo "==> Stapling ticket to pkg"
     xcrun stapler staple "dist/$PKG_NAME"
     xcrun stapler validate "dist/$PKG_NAME"
 else
     echo "==> Notarization skipped"
 fi
 
-SIZE="$(du -h "dist/$PKG_NAME" | cut -f1 | tr -d ' ')"
-echo "==> Done. Installer: dist/$PKG_NAME ($SIZE)"
+if [[ "${SKIP_SIGN:-0}" != "1" ]]; then
+    echo "==> Wrapping stapled pkg in a signed dmg"
+    DMG_STAGING="$BUILD_DIR/dmg-staging"
+    rm -rf "$DMG_STAGING"
+    mkdir -p "$DMG_STAGING"
+    cp "dist/$PKG_NAME" "$DMG_STAGING/"
+    rm -f "dist/$DMG_NAME"
+    hdiutil create -volname "TagoClip $VERSION" -srcfolder "$DMG_STAGING" \
+        -ov -format UDZO "dist/$DMG_NAME"
+
+    echo "==> Codesigning dmg"
+    codesign --force --sign "$APP_SIGNING_ID" "dist/$DMG_NAME"
+    codesign --verify --verbose=2 "dist/$DMG_NAME"
+
+    if [[ "${SKIP_NOTARIZE:-0}" != "1" ]]; then
+        echo "==> Notarizing dmg (this can take a few minutes)"
+        xcrun notarytool submit "dist/$DMG_NAME" \
+            --keychain-profile "$NOTARIZE_PROFILE" \
+            --wait
+        echo "==> Stapling ticket to dmg"
+        xcrun stapler staple "dist/$DMG_NAME"
+        xcrun stapler validate "dist/$DMG_NAME"
+    fi
+else
+    echo "==> Dmg wrap skipped (SKIP_SIGN=1, pkg is unsigned)"
+fi
+
+PKG_SIZE="$(du -h "dist/$PKG_NAME" | cut -f1 | tr -d ' ')"
+echo "==> Done. Installer pkg: dist/$PKG_NAME ($PKG_SIZE)"
+if [[ -f "dist/$DMG_NAME" ]]; then
+    DMG_SIZE="$(du -h "dist/$DMG_NAME" | cut -f1 | tr -d ' ')"
+    echo "==> Distribute this one: dist/$DMG_NAME ($DMG_SIZE)"
+fi
