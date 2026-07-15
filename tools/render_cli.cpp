@@ -55,8 +55,12 @@ int main (int argc, char* argv[])
     reader->read (&input, 0, n, 0, true, true);
 
     tagoclip::ClipEngine engine;
-    engine.prepare (sr, channels, params);
+    engine.prepare (sr, params);
     const int latency = engine.latencySamples();
+
+    // Match the plugin's FP environment (processBlock runs with FTZ/DAZ on),
+    // so the golden render can't drift in the last bits via denormal tails.
+    juce::ScopedNoDenormals noDenormals;
 
     // Stream input plus latency tail in fixed blocks, trim the latency after.
     const int total = n + latency;
@@ -68,8 +72,8 @@ int main (int argc, char* argv[])
     {
         const int len = std::min (blockSize, total - pos);
         block.clear();
-        for (int c = 0; c < channels; ++c)
-            if (pos < n)
+        if (pos < n)
+            for (int c = 0; c < channels; ++c)
                 block.copyFrom (c, 0, input, c, pos, std::min (len, n - pos));
 
         juce::AudioBuffer<float> view (block.getArrayOfWritePointers(), channels, 0, len);

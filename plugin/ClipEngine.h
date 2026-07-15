@@ -1,7 +1,7 @@
 #pragma once
 
 #include <array>
-#include <memory>
+#include <cmath>
 
 #include <juce_audio_basics/juce_audio_basics.h>
 
@@ -22,6 +22,17 @@ struct Parameters
     bool delta = false;
     static constexpr float monoLowOffBelow = 0.03f;
 };
+
+// Oversampling factor set, shared by the parameter choice list ("Off", "4x",
+// "8x"), the engine dispatch and the high-rate scratch buffer size.
+inline constexpr int osFactorTable[] = { 1, 4, 8 };
+inline constexpr int maxOversample = 8;
+
+// Mono-low sweep mapping, one source for the engine and the UI Hz label.
+inline double monoLowFreqHz (float v) noexcept
+{
+    return 20.0 * std::pow (20.0, (double) v);
+}
 
 // Fixed delay of Oversampler::totalLatency samples, keeps the os-off wet path
 // and the delta dry path on the same grid as the resampled path.
@@ -57,24 +68,18 @@ private:
 class ClipEngine
 {
 public:
-    void prepare (double sampleRate, int numChannels, const Parameters& initial)
+    void prepare (double sampleRate, const Parameters& initial)
     {
-        channels = juce::jlimit (1, 2, numChannels);
         params = pending = initial;
 
         monoLow.prepare (sampleRate);
         if (params.monoLow >= Parameters::monoLowOffBelow)
-            monoLow.setFrequency (monoLowFreq (params.monoLow));
+            monoLow.setFrequency (monoLowFreqHz (params.monoLow));
 
         for (auto& c : chans)
         {
-            if (c.os4 == nullptr)
-            {
-                c.os4 = std::make_unique<Oversampler> (4);
-                c.os8 = std::make_unique<Oversampler> (8);
-            }
-            c.os4->reset();
-            c.os8->reset();
+            c.os4.reset();
+            c.os8.reset();
             c.comp.reset();
             c.deltaDelay.reset();
         }
@@ -94,14 +99,19 @@ public:
         applyPending();
 
         const int n = buffer.getNumSamples();
-        const int numCh = juce::jmin (channels, buffer.getNumChannels());
-        float* left = buffer.getWritePointer (0);
-        float* right = numCh > 1 ? buffer.getWritePointer (1) : nullptr;
+        const int numCh = juce::jmin ((int) chans.size(), buffer.getNumChannels());
+        float* chan[2] = { buffer.getWritePointer (0),
+                           numCh > 1 ? buffer.getWritePointer (1) : nullptr };
 
-        if (right != nullptr && params.monoLow >= Parameters::monoLowOffBelow)
-            monoLow.process (left, right, n);
+        if (chan[1] != nullptr && params.monoLow >= Parameters::monoLowOffBelow)
+            monoLow.process (chan[0], chan[1], n);
 
         const double t = params.thresholdSteps / 128.0;
+        const bool useOs = params.oversample != 1;
+        Oversampler* os[2] = {};
+        for (int c = 0; c < numCh; ++c)
+            os[c] = params.oversample == 4 ? &chans[(size_t) c].os4 : &chans[(size_t) c].os8;
+
         for (int i = 0; i < n; ++i)
         {
             const float gd = driveGain.getNextValue();
@@ -109,22 +119,21 @@ public:
             for (int c = 0; c < numCh; ++c)
             {
                 auto& st = chans[(size_t) c];
-                float* data = c == 0 ? left : right;
+                float* data = chan[c];
                 const float driven = data[i] * gd;
 
                 float wet;
-                if (params.oversample == 1)
+                if (! useOs)
                 {
                     wet = st.comp.process (curves::apply (params.curve, driven, t));
                 }
                 else
                 {
-                    auto& os = params.oversample == 4 ? *st.os4 : *st.os8;
-                    float hi[8];
-                    os.upsample (driven, hi);
+                    float hi[maxOversample];
+                    os[c]->upsample (driven, hi);
                     for (int p = 0; p < params.oversample; ++p)
                         hi[p] = curves::apply (params.curve, hi[p], t);
-                    wet = os.downsample (hi);
+                    wet = os[c]->downsample (hi);
                 }
 
                 const float dryDelayed = st.deltaDelay.process (driven);
@@ -134,44 +143,41 @@ public:
     }
 
 private:
-    static double monoLowFreq (float v) noexcept
-    {
-        return 20.0 * std::pow (20.0, (double) v);
-    }
-
     void applyPending() noexcept
     {
         if (pending.oversample != params.oversample)
             for (auto& c : chans)
             {
-                c.os4->reset();
-                c.os8->reset();
+                c.os4.reset();
+                c.os8.reset();
                 c.comp.reset();
                 c.deltaDelay.reset();
             }
 
-        const bool monoOn = pending.monoLow >= Parameters::monoLowOffBelow;
-        if (monoOn)
+        if (pending.monoLow >= Parameters::monoLowOffBelow)
         {
-            if (params.monoLow < Parameters::monoLowOffBelow)
+            const bool wasOff = params.monoLow < Parameters::monoLowOffBelow;
+            if (wasOff)
                 monoLow.reset();
-            monoLow.setFrequency (monoLowFreq (pending.monoLow));
+            if (wasOff || ! juce::exactlyEqual (pending.monoLow, params.monoLow))
+                monoLow.setFrequency (monoLowFreqHz (pending.monoLow));
         }
 
-        driveGain.setTargetValue (juce::Decibels::decibelsToGain (pending.driveDb));
-        outGain.setTargetValue (juce::Decibels::decibelsToGain (pending.outputDb));
+        if (! juce::exactlyEqual (pending.driveDb, params.driveDb))
+            driveGain.setTargetValue (juce::Decibels::decibelsToGain (pending.driveDb));
+        if (! juce::exactlyEqual (pending.outputDb, params.outputDb))
+            outGain.setTargetValue (juce::Decibels::decibelsToGain (pending.outputDb));
         params = pending;
     }
 
     struct Channel
     {
-        std::unique_ptr<Oversampler> os4, os8;
+        Oversampler os4 { 4 }, os8 { 8 };
         LatencyDelay comp;       // aligns the os-off wet path
         LatencyDelay deltaDelay; // aligns the driven dry path for delta
     };
 
     Parameters params, pending;
-    int channels = 2;
     MonoLow monoLow;
     std::array<Channel, 2> chans;
     juce::SmoothedValue<float> driveGain { 1.0f }, outGain { 1.0f };

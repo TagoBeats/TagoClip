@@ -63,7 +63,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout TagoClipProcessor::createLay
             {
                 if (v < tagoclip::Parameters::monoLowOffBelow)
                     return juce::String ("Off");
-                return juce::String (juce::roundToInt (20.0 * std::pow (20.0, (double) v))) + " Hz";
+                return juce::String (juce::roundToInt (tagoclip::monoLowFreqHz (v))) + " Hz";
             })));
 
     layout.add (std::make_unique<juce::AudioParameterBool> (
@@ -77,12 +77,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout TagoClipProcessor::createLay
 
 tagoclip::Parameters TagoClipProcessor::currentParameters() const noexcept
 {
-    static constexpr int osFactors[] = { 1, 4, 8 };
     tagoclip::Parameters p;
     p.curve = (tagoclip::curves::Type) juce::jlimit (0, 2, (int) curveRaw->load());
     p.thresholdSteps = juce::jlimit (1, 127, (int) thresholdRaw->load());
     p.driveDb = driveRaw->load();
-    p.oversample = osFactors[juce::jlimit (0, 2, (int) osRaw->load())];
+    p.oversample = tagoclip::osFactorTable[juce::jlimit (0, 2, (int) osRaw->load())];
     p.outputDb = outputRaw->load();
     p.monoLow = monoLowRaw->load();
     p.delta = deltaRaw->load() > 0.5f;
@@ -91,7 +90,7 @@ tagoclip::Parameters TagoClipProcessor::currentParameters() const noexcept
 
 void TagoClipProcessor::prepareToPlay (double sampleRate, int)
 {
-    engine.prepare (sampleRate, getTotalNumOutputChannels(), currentParameters());
+    engine.prepare (sampleRate, currentParameters());
     setLatencySamples (engine.latencySamples());
 }
 
@@ -101,14 +100,6 @@ bool TagoClipProcessor::isBusesLayoutSupported (const BusesLayout& layouts) cons
     if (out != juce::AudioChannelSet::mono() && out != juce::AudioChannelSet::stereo())
         return false;
     return layouts.getMainInputChannelSet() == out;
-}
-
-float TagoClipProcessor::bufferPeak (const juce::AudioBuffer<float>& buffer) noexcept
-{
-    float peak = 0.0f;
-    for (int c = 0; c < buffer.getNumChannels(); ++c)
-        peak = juce::jmax (peak, buffer.getMagnitude (c, 0, buffer.getNumSamples()));
-    return peak;
 }
 
 void TagoClipProcessor::storePeak (std::atomic<float>& peak, float value) noexcept
@@ -125,7 +116,7 @@ void TagoClipProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 {
     juce::ScopedNoDenormals noDenormals;
 
-    const float inPeak = bufferPeak (buffer);
+    const float inPeak = buffer.getMagnitude (0, buffer.getNumSamples());
     storePeak (inputPeak, inPeak);
 
     if (bypassParam->get())
@@ -137,7 +128,7 @@ void TagoClipProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     engine.setParameters (currentParameters());
     engine.process (buffer);
 
-    storePeak (outputPeak, bufferPeak (buffer));
+    storePeak (outputPeak, buffer.getMagnitude (0, buffer.getNumSamples()));
 }
 
 void TagoClipProcessor::getStateInformation (juce::MemoryBlock& destData)

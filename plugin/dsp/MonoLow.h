@@ -55,22 +55,17 @@ public:
     void prepare (double sampleRate) noexcept
     {
         sr = sampleRate;
-        setFrequency (freqHz, true);
+        updateCoefficients();
         reset();
     }
 
-    void setFrequency (double f, bool force = false) noexcept
+    void setFrequency (double f) noexcept
     {
         // Bitwise compare: only skip the coefficient update for the exact same value.
-        if (! force && std::memcmp (&f, &freqHz, sizeof (double)) == 0)
+        if (std::memcmp (&f, &freqHz, sizeof (double)) == 0)
             return;
         freqHz = f;
-        for (int ch = 0; ch < 2; ++ch)
-            for (int s = 0; s < 2; ++s)
-            {
-                lp[ch][s].setButterworth (false, freqHz, sr);
-                hp[ch][s].setButterworth (true, freqHz, sr);
-            }
+        updateCoefficients();
     }
 
     void process (float* left, float* right, int numSamples) noexcept
@@ -100,6 +95,16 @@ public:
     }
 
 private:
+    void updateCoefficients() noexcept
+    {
+        for (int ch = 0; ch < 2; ++ch)
+            for (int s = 0; s < 2; ++s)
+            {
+                lp[ch][s].setButterworth (false, freqHz, sr);
+                hp[ch][s].setButterworth (true, freqHz, sr);
+            }
+    }
+
     double sr = 44100.0;
     double freqHz = 120.0;
     Biquad lp[2][2], hp[2][2];

@@ -1,8 +1,6 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
-#include <juce_audio_utils/juce_audio_utils.h>
-#include <juce_dsp/juce_dsp.h>
 
 #include "ClipEngine.h"
 
@@ -60,7 +58,6 @@ private:
     juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
     tagoclip::Parameters currentParameters() const noexcept;
 
-    static float bufferPeak (const juce::AudioBuffer<float>& buffer) noexcept;
     void storePeak (std::atomic<float>& peak, float value) noexcept;
 
     juce::AudioParameterBool* bypassParam = nullptr;
