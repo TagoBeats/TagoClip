@@ -240,6 +240,8 @@
     margin-top: auto;
     margin-bottom: 1px;
     white-space: nowrap;
+    /* fixed width so cycling OFF/4x/8x never reflows neighboring controls */
+    width: 128px;
     font: 700 8.5px "Space Mono", monospace;
     letter-spacing: 0.18em; text-transform: uppercase;
     color: var(--dim);
@@ -586,7 +588,7 @@ CURVES.hard = (x, t) => Math.max(-t, Math.min(t, x));
 
 const state = {
   curve: "fl",
-  os: 8,
+  os: 1,
   delta: false,
   threshold: 100 / 128,   // linear, like the DSP
   driveDb: 0,
@@ -732,11 +734,12 @@ function setOs(factor) {
   state.os = factor;
   osToggle.classList.toggle("on", factor > 1);
   osToggle.classList.toggle("on8", factor === 8);
-  osToggle.textContent = factor > 1 ? `Oversampling ${factor}x` : "Oversampling";
+  osToggle.textContent = factor > 1 ? `Oversampling ${factor}x` : "Oversampling OFF";
   document.getElementById("footer-meta").innerHTML =
     `<b>OS ${factor > 1 ? factor + "X" : "OFF"} · 0.5 MS</b>`;
 }
 osToggle.addEventListener("click", () => setOs(state.os === 1 ? 4 : state.os === 4 ? 8 : 1));
+setOs(state.os); // sync button label/glow with the initial state on load
 
 /* ---------- Delta ---------- */
 document.getElementById("delta-btn").addEventListener("click", e => {
