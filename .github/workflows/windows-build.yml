@@ -1,0 +1,64 @@
+name: Windows build
+
+# Robin has no Windows machine: this runner is the only Windows build + the
+# testers are colleagues, so keep the artifact easy to grab from the run page.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  vst3:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install UI dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: Build UI bundle
+        run: bash scripts/build-ui.sh
+
+      # JUCE links WebView2LoaderStatic.lib from the NuGet package; the version
+      # matches the one JUCE's FindWebView2.cmake recommends.
+      - name: Install WebView2 SDK
+        run: nuget install Microsoft.Web.WebView2 -Version 1.0.3485.44 -OutputDirectory nuget-packages
+
+      - name: Configure
+        run: cmake -B build -DTAGOCLIP_DEV_UI=OFF -DJUCE_WEBVIEW2_PACKAGE_LOCATION="${{ github.workspace }}/nuget-packages"
+
+      - name: Build VST3
+        run: cmake --build build --config Release --target TagoClip_VST3
+
+      - name: Embed third-party attribution
+        shell: bash
+        run: |
+          mkdir -p "build/TagoClip_artefacts/Release/VST3/TagoClip.vst3/Contents/Resources"
+          cp THIRD_PARTY_LICENSES.txt "build/TagoClip_artefacts/Release/VST3/TagoClip.vst3/Contents/Resources/"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TagoClip-VST3-Windows
+          path: build/TagoClip_artefacts/Release/VST3/TagoClip.vst3
+
+      # On tag builds, attach the zipped VST3 to the GitHub release so the
+      # macOS pkg and the Windows build hang off the same release.
+      - name: Attach VST3 zip to release
+        if: github.ref_type == 'tag'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd build/TagoClip_artefacts/Release/VST3
+          7z a -tzip "TagoClip-${{ github.ref_name }}-Windows-VST3.zip" TagoClip.vst3 > /dev/null
+          gh release upload "${{ github.ref_name }}" "TagoClip-${{ github.ref_name }}-Windows-VST3.zip" --clobber --repo "${{ github.repository }}"

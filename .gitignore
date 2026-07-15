@@ -6,3 +6,4 @@ golden/out/
 ui/node_modules/
 ui/dist/
 ui/webui.zip
+dist/

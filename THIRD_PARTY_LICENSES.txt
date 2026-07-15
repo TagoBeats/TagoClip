@@ -1,0 +1,11 @@
+TagoClip bundles the following third-party software:
+
+--------------------------------------------------------------------------
+JUCE framework
+https://juce.com
+
+Built with JUCE 8 under the JUCE license terms (juce.com/legal/juce-8-licence).
+
+--------------------------------------------------------------------------
+VST is a trademark of Steinberg Media Technologies GmbH, registered in
+Europe and other countries.
