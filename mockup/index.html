@@ -384,7 +384,6 @@
 
   <footer>
     <span>TagoBeats</span>
-    <span id="footer-meta"><b>OS OFF · 0.5 MS</b></span>
   </footer>
 </div>
 
@@ -736,8 +735,6 @@ function setOs(factor) {
   osToggle.classList.toggle("on", factor > 1);
   osToggle.classList.toggle("on8", factor === 8);
   osToggle.textContent = factor > 1 ? `Oversampling ${factor}x` : "Oversampling OFF";
-  document.getElementById("footer-meta").innerHTML =
-    `<b>OS ${factor > 1 ? factor + "X" : "OFF"} · 0.5 MS</b>`;
 }
 osToggle.addEventListener("click", () => setOs(state.os === 1 ? 4 : state.os === 4 ? 8 : 1));
 setOs(state.os); // sync button label/glow with the initial state on load

@@ -155,9 +155,6 @@ export default function App() {
 
       <footer>
         <span>TagoBeats</span>
-        <span id="footer-meta">
-          <b>{osFactor > 1 ? `OS ${osFactor}X` : "OS OFF"} · 0.5 MS</b>
-        </span>
       </footer>
     </div>
   );
