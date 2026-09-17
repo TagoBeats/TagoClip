@@ -67,6 +67,18 @@ scripts/run_golden.sh build/TagoClipRender_artefacts/TagoClipRender
 8. **Keine em-dashes** in Code-Kommentaren, Commit-Messages und Docs. Kommentare auf
    Englisch, knapp, nur wo der Code es nicht selbst sagt.
 
+## Release
+
+`scripts/build_release.sh` muss **Robin selbst im Terminal starten**, nicht ein
+Agent im Hintergrund: der Schlüsselbund verlangt für den privaten Schlüssel des
+Installer-Zertifikats eine Freigabe per Dialog, sonst bricht `productbuild` mit
+`-60008 Unable to obtain authorization` ab. Im Dialog "Immer erlauben" wählen.
+Das notarytool-Profil heisst `DubCheck-Notarize` und gilt für alle Tago-Produkte
+plus DubCheck; laeuft das app-spezifische Passwort ab, antwortet Apple mit
+HTTP 401 und jeder Release bleibt an derselben Stelle stehen.
+Ausgabe niemals durch `| tail` schicken, sonst ist der Exit-Code der von `tail`
+und ein gescheiterter Lauf sieht nach Erfolg aus.
+
 ## Verifikation
 
 - State: `build/TagoClipStateProbe_artefacts/Release/TagoClipStateProbe` gruen nach
