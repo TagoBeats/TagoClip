@@ -101,6 +101,30 @@ header {
   color: var(--dim);
   white-space: nowrap;
 }
+/* Mix lives in the header, between the meta line and the bypass button, and
+   carries its value inline because the header has no room for a stacked label. */
+.header-mix .knob-unit {
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 6px;
+}
+.header-mix .knob-label {
+  font-size: 9.5px; letter-spacing: 0.2em;
+  color: var(--faint);
+  margin-top: 0;
+}
+.header-mix .knob-value {
+  font-size: 9.5px; letter-spacing: 0.12em;
+  /* fixed width so 8 % and 100 % do not shift the bypass button */
+  min-width: 30px; text-align: right;
+  min-height: 0;
+  color: var(--dim);
+}
+.header-mix .knob-unit:hover .knob-value { color: var(--accent); }
+.header-mix .track, .header-mix .fill { stroke-width: 2; }
+.header-mix .fill { filter: drop-shadow(0 0 3px rgba(0, 253, 220, 0.35)); }
+.header-mix .pointer { stroke-width: 2; }
+
 #power {
   width: 26px; height: 26px; border-radius: 50%;
   border: 1px solid var(--hairline);
@@ -146,6 +170,24 @@ main {
   overflow: hidden;
 }
 #scope { display: block; width: 100%; height: 100%; }
+/* Gain reduction, deliberately a side feature: no badge, no glow, invisible
+   until the clipper actually takes something away (Robin, 17.09.2026). Someone
+   looking for the number finds it, nobody else is asked to read it. */
+#gr-readout {
+  position: absolute; left: 11px; top: 11px;
+  display: flex; align-items: baseline; gap: 4px;
+  font: 700 8.5px "Space Mono", monospace;
+  letter-spacing: 0.16em;
+  /* same grey as the knob labels, the size does the holding back */
+  color: var(--dim);
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+  z-index: 1;
+}
+#gr-readout .gr-value { min-width: 24px; text-align: right; }
+#gr-readout.on { opacity: 1; }
+
 #delta-btn {
   position: absolute; top: 7px; right: 7px;
   font: 700 9px "Space Mono", monospace;

@@ -113,6 +113,30 @@
     color: var(--dim);
     white-space: nowrap;
   }
+  /* Mix lives in the header, between the meta line and the bypass button, and
+     carries its value inline because the header has no room for a stacked label. */
+  .header-mix .knob-unit {
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: 6px;
+  }
+  .header-mix .knob-label {
+    font-size: 9.5px; letter-spacing: 0.2em;
+    color: var(--faint);
+    margin-top: 0;
+  }
+  .header-mix .knob-value {
+    font-size: 9.5px; letter-spacing: 0.12em;
+    /* fixed width so 8 % and 100 % do not shift the bypass button */
+    min-width: 30px; text-align: right;
+    min-height: 0;
+    color: var(--dim);
+  }
+  .header-mix .knob-unit:hover .knob-value { color: var(--accent); }
+  .header-mix .track, .header-mix .fill { stroke-width: 2; }
+  .header-mix .fill { filter: drop-shadow(0 0 3px rgba(0, 253, 220, 0.35)); }
+  .header-mix .pointer { stroke-width: 2; }
+
   #power {
     width: 26px; height: 26px; border-radius: 50%;
     border: 1px solid var(--hairline);
@@ -158,6 +182,22 @@
     overflow: hidden;
   }
   #scope { display: block; width: 100%; height: 100%; }
+  /* Gain reduction, deliberately a side feature: no badge, no glow, invisible
+     until the clipper actually takes something away (Robin, 17.09.2026). */
+  #gr-readout {
+    position: absolute; left: 11px; top: 11px;
+    display: flex; align-items: baseline; gap: 4px;
+    font: 700 8.5px "Space Mono", monospace;
+    letter-spacing: 0.16em;
+    color: var(--dim);
+    opacity: 0;
+    transition: opacity 0.25s;
+    pointer-events: none;
+    z-index: 1;
+  }
+  #gr-readout .gr-value { min-width: 24px; text-align: right; }
+  #gr-readout.on { opacity: 1; }
+
   #delta-btn {
     position: absolute; top: 7px; right: 7px;
     font: 700 9px "Space Mono", monospace;
@@ -334,7 +374,8 @@
       <button id="next" title="Next preset">›</button>
     </div>
     <div class="header-right">
-      <span class="header-meta">Stereo&nbsp;·&nbsp;V1</span>
+      <span class="header-meta">Stereo&nbsp;·&nbsp;V1.1</span>
+      <div class="header-mix"><div class="knob-unit" id="mix"></div></div>
       <button id="power" title="Bypass">
         <svg viewBox="0 0 24 24"><path d="M12 3v8"/><path d="M6.2 6.2a8 8 0 1 0 11.6 0"/></svg>
       </button>
@@ -344,7 +385,10 @@
   <main>
     <div class="scope-unit">
       <div id="scope-wrap">
-        <button id="delta-btn" title="Nur das Abgeschnittene hören">Δ DELTA</button>
+        <div id="gr-readout" title="Peak gain reduction of the clipper">
+        <span class="gr-label">GR</span><span class="gr-value">0.0</span><span class="gr-unit">dB</span>
+      </div>
+      <button id="delta-btn" title="Nur das Abgeschnittene hören">Δ DELTA</button>
         <svg id="scope"></svg>
       </div>
       <div class="chip-rows">
@@ -416,13 +460,16 @@ class Knob {
     Object.assign(this, {
       min: 0, max: 1, def: 0, step: 0,
       bipolar: false, size: 90, unit: "",
+      center: null,     // value that sits at 12 o'clock on an asymmetric range
+      ringInset: 7,     // px between knob edge and value ring
+      ticks: true,
       label: null,
       onchange: null,
       fmt: v => v.toFixed(2) + " " + this.unit,
     }, opts);
     this.el = el;
     this.value = this.def;
-    this.r = this.size / 2 - 7;
+    this.r = this.size / 2 - this.ringInset;
     this.build();
     this.bind();
     this.render();
@@ -457,7 +504,7 @@ class Knob {
 
     const small = this.size < 80;
     const nTicks = small ? 12 : 24;
-    for (let i = 0; i <= nTicks; i++) {
+    for (let i = 0; this.ticks && i <= nTicks; i++) {
       const ang = START + (i / nTicks) * SWEEP;
       const major = i % (nTicks / 4) === 0;
       const [tx0, ty0] = polar(c, c, this.r + (major ? 1 : 2), ang);
@@ -507,7 +554,26 @@ class Knob {
     this.el.append(svg, label, name);
   }
 
-  norm() { return (this.value - this.min) / (this.max - this.min); }
+  /* Knob position is normalised 0..1. With a centre the mapping is piecewise so
+     that value lands at 0.5, i.e. straight up, even on an asymmetric range like
+     drive (-6..+24 dB), where 12 o'clock would otherwise sit at +9 dB. */
+  toNorm(v) {
+    const c = this.center;
+    if (c === null) return (v - this.min) / (this.max - this.min);
+    return v <= c
+      ? 0.5 * (v - this.min) / (c - this.min)
+      : 0.5 + 0.5 * (v - c) / (this.max - c);
+  }
+
+  fromNorm(n) {
+    const c = this.center;
+    if (c === null) return this.min + n * (this.max - this.min);
+    return n <= 0.5
+      ? this.min + (n / 0.5) * (c - this.min)
+      : c + ((n - 0.5) / 0.5) * (this.max - c);
+  }
+
+  norm() { return this.toNorm(this.value); }
 
   set(v, fine) {
     v = Math.min(this.max, Math.max(this.min, v));
@@ -541,7 +607,8 @@ class Knob {
       const move = ev => {
         const fine = ev.shiftKey;
         const px = fine ? 900 : 220;
-        this.set(startVal + (startY - ev.clientY) * range / px, fine);
+        const moved = this.toNorm(startVal) + (startY - ev.clientY) / px;
+        this.set(this.fromNorm(Math.min(1, Math.max(0, moved))), fine);
       };
       const up = () => {
         this.el.removeEventListener("pointermove", move);
@@ -592,6 +659,7 @@ const state = {
   delta: false,
   threshold: 100 / 128,   // linear, like the DSP
   driveDb: 0,
+  mix: 100,               // percent, 100 = fully clipped
 };
 
 /* ---------- Scope: the hero display ---------- */
@@ -691,9 +759,19 @@ const fmtDb = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1) +
 
 const knobs = {
   drive: new Knob(document.getElementById("drive"), {
-    min: -6, max: 24, def: 0, size: 90, label: "drive", bipolar: true,
+    /* centre: the range is not symmetric, so without it 12 o'clock would sit at
+       +9 dB and the default would point left (Robin, 17.09.2026) */
+    min: -6, max: 24, def: 0, size: 90, label: "drive", bipolar: true, center: 0,
     fmt: fmtDb,
     onchange: v => { state.driveDb = v; },
+  }),
+  /* Parallel clipping (v1.1). Same diameter as the bypass button next to it, so
+     the ring sits tighter than on the big knobs and the tick ring is dropped. */
+  mix: new Knob(document.getElementById("mix"), {
+    min: 0, max: 100, def: 100, size: 26, label: "mix",
+    ringInset: 4, ticks: false,
+    fmt: v => Math.round(v) + "%",
+    onchange: v => { state.mix = v; },
   }),
   /* Fruity scale: integer 0..127, internally t = v/128 like the original */
   threshold: new Knob(document.getElementById("threshold"), {
@@ -750,11 +828,12 @@ document.getElementById("delta-btn").addEventListener("click", e => {
    INIT = the Fruity Soft Clipper defaults with OS off: load TagoClip, it IS
    Fruity 1:1 (Robin, 15.07.2026: default off). Last entry per preset = os factor. */
 const PRESETS = [
-  ["INIT",        { drive: 0, threshold: 100, output: 0,  monolow: 0 },    "fl",   1],
-  ["808 GLUE",    { drive: 6, threshold: 84,  output: -1, monolow: 0.67 }, "fl",   8],
-  ["DRUMBUS",     { drive: 3, threshold: 92,  output: 0,  monolow: 0 },    "fl",   8],
-  ["FRUITY 1:1",  { drive: 0, threshold: 100, output: 0,  monolow: 0 },    "fl",   1],
-  ["TAPE SOFT",   { drive: 8, threshold: 51,  output: -2, monolow: 0.6 },  "tanh", 8],
+  ["INIT",         { drive: 0,  threshold: 100, output: 0,  monolow: 0,    mix: 100 }, "fl",   1],
+  ["808 GLUE",     { drive: 6,  threshold: 84,  output: -1, monolow: 0.67, mix: 100 }, "fl",   8],
+  ["DRUMBUS",      { drive: 3,  threshold: 92,  output: 0,  monolow: 0,    mix: 100 }, "fl",   8],
+  ["FRUITY 1:1",   { drive: 0,  threshold: 100, output: 0,  monolow: 0,    mix: 100 }, "fl",   1],
+  ["TAPE SOFT",    { drive: 8,  threshold: 51,  output: -2, monolow: 0.6,  mix: 100 }, "tanh", 8],
+  ["PARALLEL 808", { drive: 12, threshold: 64,  output: 0,  monolow: 0,    mix: 45  }, "fl",   8],
 ];
 let presetIdx = 0;
 function applyPreset(i) {
@@ -803,7 +882,28 @@ function meterTick() {
     const outGain = Math.pow(10, knobs.output.value / 20 * 0.5);
     drawMeter(meterOut, Math.min(1, clipped * outGain));
   }
+  updateGr();
   requestAnimationFrame(meterTick);
+}
+
+/* ---------- Gain reduction readout ----------
+   In the plugin this number comes from the audio thread (peak reduction across
+   the curve). Here it follows the same idle model the meters use, so the mockup
+   shows a plausible value instead of a made up one. Fast attack, slow release. */
+const grRoot = document.getElementById("gr-readout");
+const grValue = grRoot.querySelector(".gr-value");
+let grShown = 0;
+function updateGr() {
+  let target = 0;
+  if (!plugin.classList.contains("bypassed")) {
+    const driven = 0.45 * Math.pow(10, state.driveDb / 20);
+    if (driven > state.threshold)
+      target = -Math.min(24, 20 * Math.log10(driven / state.threshold) * 0.8);
+  }
+  grShown += (target - grShown) * (target < grShown ? 0.6 : 0.06);
+  const active = grShown < -0.05;
+  grValue.textContent = active ? "\u2212" + Math.abs(grShown).toFixed(1) : "0.0";
+  grRoot.classList.toggle("on", active);
 }
 
 drawScope();

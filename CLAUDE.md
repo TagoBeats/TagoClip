@@ -5,7 +5,9 @@
 Softclipper für 808s/Drums, Plugin Nr. 2 der Tago-Linie (nach TagoPitch, das als
 Template diente). Kern: der reverse-vermessene Fruity Soft Clipper als "FL Mode"
 (Kurve exakt, siehe measure/analysis/REPORT.md) plus Oversampling gegen dessen
-Aliasing, plus Hard/Tanh-Kurven, Delta-Listen und Mono-Low-End.
+Aliasing, plus Hard/Tanh-Kurven, Delta-Listen und Mono-Low-End. Seit v1.1 dazu
+ein Mix-Regler (Parallel-Clipping, Dry ist der rohe Plugin-Input) und ein
+Gain-Reduction-Readout im Scope.
 Python-Referenz: tagodsp (distortion/clipper.py, stereo/mono_low.py).
 Projekt-Notiz im Vault: 02 Projekte/TagoClip.md.
 
@@ -15,11 +17,17 @@ Projekt-Notiz im Vault: 02 Projekte/TagoClip.md.
   (`tagoclip::param`). Editor ist noch der generische JUCE-Editor, WebView-Port folgt.
 - `plugin/dsp/` DSP-Module: Curves.h, Oversampler.h (+ generierte OversamplerTaps.h),
   MonoLow.h. Ports der tagodsp-Prototypen, Golden-Tests halten sie deckungsgleich.
-- `mockup/` abgenommenes Design (15.07.2026). **Read-only, Source of Truth für die UI.**
+- `mockup/` abgenommenes Design (15.07.2026, UI-Stand v1.1 nachgezogen am 17.09.2026).
+  **Source of Truth für die UI, nur nach Abnahme durch Robin anfassen.** Der
+  Zwilling auf der Website (`TagoBeats_Website/demos/tagoclip.html`) ist die
+  Display-only-Variante davon und muss mitgezogen werden.
 - `measure/` Fruity-Soft-Clipper-Vermessung (Report, Testsignale, FL-Bounces). Read-only.
 - `golden/` Golden-File-Tests: make_reference.py (tagodsp-Referenzen) + compare.py.
   refs/ und out/ sind generiert und nicht eingecheckt.
 - `tools/render_cli.cpp` Offline-Render-CLI für die Golden-Tests.
+- `tools/state_probe.cpp` State-Round-Trip-Check (Target `TagoClipStateProbe`):
+  speichern/laden aller Parameter plus der Upgrade-Pfad von einem v1.0-State
+  ohne Mix-Eintrag. Läuft ohne DAW und ohne WebView.
 - `scripts/` gen_filter_taps.py (scipy-Taps nach C++), run_golden.sh, Build-Helfer.
 - `third_party/JUCE` Submodule, gepinnt auf 8.0.14. Nicht ungefragt bumpen.
 
@@ -39,7 +47,7 @@ scripts/run_golden.sh build/TagoClipRender_artefacts/TagoClipRender
 ## Harte Regeln
 
 1. **Parameter-Contract:** Die IDs in `tagoclip::param` (`drive_db`, `threshold_steps`,
-   `curve`, `oversampling`, `output_db`, `mono_low`, `delta`, `bypass`) sind der Vertrag
+   `curve`, `oversampling`, `output_db`, `mono_low`, `mix`, `delta`, `bypass`) sind der Vertrag
    mit Python-Referenz, Golden-Tests und später den WebView-Relays. Niemals umbenennen,
    Ranges/Defaults nur nach Absprache ändern.
 2. **Mockup und measure/ nicht anfassen:** beides abgenommen bzw. Messdaten.
@@ -61,6 +69,8 @@ scripts/run_golden.sh build/TagoClipRender_artefacts/TagoClipRender
 
 ## Verifikation
 
+- State: `build/TagoClipStateProbe_artefacts/Release/TagoClipStateProbe` gruen nach
+  jeder Parameter-Aenderung (neuer Parameter = neuer Eintrag in `probes`).
 - DSP: scripts/run_golden.sh gruen (inkl. Block-Sweep), bei hoerbaren Aenderungen
   Delta-Bounces via /listen-pack, finale Abnahme durch Robins Ohr.
 - Formate: warnungsfreier Build (VST3/AU/Standalone), `auval` gruen.

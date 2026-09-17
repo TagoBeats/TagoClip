@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(TagoClip VERSION 1.0.0)
+project(TagoClip VERSION 1.1.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -71,4 +71,27 @@ if(TAGOCLIP_BUILD_TOOLS)
         PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)
+
+    # State round trip probe: builds the processor (not the plugin wrapper) and
+    # checks that a saved state comes back and that a v1.0 state without the mix
+    # parameter still loads cleanly. No editor is created, so the WebView never
+    # comes up, but the editor sources still have to link.
+    juce_add_console_app(TagoClipStateProbe PRODUCT_NAME "TagoClipStateProbe")
+    target_sources(TagoClipStateProbe PRIVATE
+        tools/state_probe.cpp
+        plugin/PluginProcessor.cpp
+        plugin/PluginEditor.cpp)
+    target_compile_definitions(TagoClipStateProbe PRIVATE
+        JUCE_WEB_BROWSER=1
+        JUCE_USE_CURL=0
+        TAGOCLIP_DEV_UI=0
+        JucePlugin_Name="TagoClip")
+    target_link_libraries(TagoClipStateProbe
+        PRIVATE
+            TagoClipAssets
+            juce::juce_audio_utils
+            juce::juce_gui_extra
+        PUBLIC
+            juce::juce_recommended_config_flags
+            juce::juce_recommended_warning_flags)
 endif()

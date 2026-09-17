@@ -10,6 +10,9 @@ export interface ParamSpec {
   step: number; // 0 = continuous
   bipolar: boolean;
   size: number; // knob diameter in px, from the mockup
+  center?: number; // value that sits at 12 o'clock, for asymmetric bipolar ranges
+  ringInset?: number; // px between knob edge and value ring, default 7
+  ticks?: boolean; // tick ring, off for the tiny header knob
   fmt: (v: number) => string;
 }
 
@@ -26,6 +29,10 @@ export const PARAMS: Record<string, ParamSpec> = {
     def: 0,
     step: 0,
     bipolar: true,
+    // The range is not symmetric, so without this 12 o'clock would sit at +9 dB
+    // and the default would point left. Unity belongs straight up (Robin,
+    // 17.09.2026): the knob maps -6..0 to the left half and 0..+24 to the right.
+    center: 0,
     size: 90,
     fmt: fmtDb,
   },
@@ -51,6 +58,23 @@ export const PARAMS: Record<string, ParamSpec> = {
     bipolar: true,
     size: 62,
     fmt: fmtDb,
+  },
+  // Parallel clipping (v1.1). 100 % is fully clipped, so the default keeps the
+  // Fruity 1:1 behaviour. Dry is the raw plugin input, pre drive, pre mono-low.
+  mix: {
+    id: "mix",
+    label: "mix",
+    min: 0,
+    max: 100,
+    def: 100,
+    step: 0,
+    bipolar: false,
+    // Same diameter as the bypass button next to it (Robin, 17.09.2026), so the
+    // ring sits tighter than on the big knobs and the tick ring is dropped.
+    size: 26,
+    ringInset: 4,
+    ticks: false,
+    fmt: (v) => Math.round(v) + "%",
   },
   // Logarithmic sweep: knob value is the normalized position, 20 Hz..400 Hz,
   // bottom 3% = OFF (mirrors ClipEngine.h monoLowOffBelow / monoLowFreqHz).
@@ -99,10 +123,13 @@ export const OS_FACTORS = [1, 4, 8] as const;
 
 // v1 presets, ported 1:1 from mockup/index.html. INIT = the Fruity Soft
 // Clipper defaults with OS off: load TagoClip, it IS Fruity 1:1.
+// mix is part of every preset so recalling one is deterministic; the v1 presets
+// all stay fully wet, which keeps FL SOFT CLIP a true Fruity 1:1 recall.
 export const PRESETS: Array<[string, Record<string, number>, CurveKey, number]> = [
-  ["INIT", { drive: 0, threshold: 100, output: 0, monolow: 0 }, "fl", 1],
-  ["808 GLUE", { drive: 6, threshold: 84, output: -1, monolow: 0.67 }, "fl", 8],
-  ["DRUMBUS", { drive: 3, threshold: 92, output: 0, monolow: 0 }, "fl", 8],
-  ["FL SOFT CLIP", { drive: 0, threshold: 100, output: 0, monolow: 0 }, "fl", 1],
-  ["TAPE SOFT", { drive: 8, threshold: 51, output: -2, monolow: 0.6 }, "tanh", 8],
+  ["INIT", { drive: 0, threshold: 100, output: 0, monolow: 0, mix: 100 }, "fl", 1],
+  ["808 GLUE", { drive: 6, threshold: 84, output: -1, monolow: 0.67, mix: 100 }, "fl", 8],
+  ["DRUMBUS", { drive: 3, threshold: 92, output: 0, monolow: 0, mix: 100 }, "fl", 8],
+  ["FL SOFT CLIP", { drive: 0, threshold: 100, output: 0, monolow: 0, mix: 100 }, "fl", 1],
+  ["TAPE SOFT", { drive: 8, threshold: 51, output: -2, monolow: 0.6, mix: 100 }, "tanh", 8],
+  ["PARALLEL 808", { drive: 12, threshold: 64, output: 0, monolow: 0, mix: 45 }, "fl", 8],
 ];

@@ -62,6 +62,7 @@ TagoClipEditor::TagoClipEditor (TagoClipProcessor& p)
                    .withOptionsFrom (oversamplingRelay)
                    .withOptionsFrom (outputRelay)
                    .withOptionsFrom (monoLowRelay)
+                   .withOptionsFrom (mixRelay)
                    .withOptionsFrom (deltaRelay)
                    .withOptionsFrom (bypassRelay)),
       driveAttachment (*p.apvts.getParameter (tagoclip::param::drive), driveRelay, nullptr),
@@ -70,6 +71,7 @@ TagoClipEditor::TagoClipEditor (TagoClipProcessor& p)
       oversamplingAttachment (*p.apvts.getParameter (tagoclip::param::oversampling), oversamplingRelay, nullptr),
       outputAttachment (*p.apvts.getParameter (tagoclip::param::output), outputRelay, nullptr),
       monoLowAttachment (*p.apvts.getParameter (tagoclip::param::monoLow), monoLowRelay, nullptr),
+      mixAttachment (*p.apvts.getParameter (tagoclip::param::mix), mixRelay, nullptr),
       deltaAttachment (*p.apvts.getParameter (tagoclip::param::delta), deltaRelay, nullptr),
       bypassAttachment (*p.apvts.getParameter (tagoclip::param::bypass), bypassRelay, nullptr)
 {
@@ -92,6 +94,7 @@ void TagoClipEditor::timerCallback()
     auto* levels = new juce::DynamicObject();
     levels->setProperty ("in", clipProcessor.readInputPeak());
     levels->setProperty ("out", clipProcessor.readOutputPeak());
+    levels->setProperty ("gr", clipProcessor.readGainReductionDb());
     browser.emitEventIfBrowserIsVisible ("levels", juce::var (levels));
 }
 

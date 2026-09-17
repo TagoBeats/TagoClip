@@ -45,6 +45,7 @@ def run_cli(binary: Path, cfg: dict, out_path: Path, block: int) -> str:
         str(cfg["output"]),
         str(cfg["monolow"]),
         str(cfg["delta"]),
+        str(cfg["mix"]),
         str(block),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, check=True)

@@ -26,6 +26,7 @@ private:
     juce::WebSliderRelay oversamplingRelay { tagoclip::param::oversampling };
     juce::WebSliderRelay outputRelay { tagoclip::param::output };
     juce::WebSliderRelay monoLowRelay { tagoclip::param::monoLow };
+    juce::WebSliderRelay mixRelay { tagoclip::param::mix };
     juce::WebToggleButtonRelay deltaRelay { tagoclip::param::delta };
     juce::WebToggleButtonRelay bypassRelay { tagoclip::param::bypass };
 
@@ -37,6 +38,7 @@ private:
     juce::WebSliderParameterAttachment oversamplingAttachment;
     juce::WebSliderParameterAttachment outputAttachment;
     juce::WebSliderParameterAttachment monoLowAttachment;
+    juce::WebSliderParameterAttachment mixAttachment;
     juce::WebToggleButtonParameterAttachment deltaAttachment;
     juce::WebToggleButtonParameterAttachment bypassAttachment;
 

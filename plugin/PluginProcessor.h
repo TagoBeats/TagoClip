@@ -14,6 +14,7 @@ inline constexpr auto curve = "curve";               // 0 fl, 1 hard, 2 tanh
 inline constexpr auto oversampling = "oversampling"; // 0 off, 1 4x, 2 8x
 inline constexpr auto output = "output_db";          // -12..+12 dB
 inline constexpr auto monoLow = "mono_low";          // 0..1 log sweep, < 0.03 off
+inline constexpr auto mix = "mix";                   // 0..100 %, 100 = fully clipped
 inline constexpr auto delta = "delta";
 inline constexpr auto bypass = "bypass";
 } // namespace tagoclip::param
@@ -54,6 +55,9 @@ public:
     float readInputPeak() noexcept { return inputPeak.exchange (0.0f, std::memory_order_relaxed); }
     float readOutputPeak() noexcept { return outputPeak.exchange (0.0f, std::memory_order_relaxed); }
 
+    // Peak gain reduction of the last processed block, in dB (<= 0).
+    float readGainReductionDb() const noexcept { return gainReductionDb.load (std::memory_order_relaxed); }
+
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
     tagoclip::Parameters currentParameters() const noexcept;
@@ -67,12 +71,14 @@ private:
     std::atomic<float>* osRaw = nullptr;
     std::atomic<float>* outputRaw = nullptr;
     std::atomic<float>* monoLowRaw = nullptr;
+    std::atomic<float>* mixRaw = nullptr;
     std::atomic<float>* deltaRaw = nullptr;
 
     tagoclip::ClipEngine engine;
 
     std::atomic<float> inputPeak { 0.0f };
     std::atomic<float> outputPeak { 0.0f };
+    std::atomic<float> gainReductionDb { 0.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TagoClipProcessor)
 };

@@ -4,7 +4,8 @@
 // TagoClipRender target (-DTAGOCLIP_BUILD_TOOLS=ON).
 //
 // Usage: TagoClipRender in.wav out.wav <fl|hard|tanh> <threshold 1-127>
-//        <drive_db> <os 1|4|8> <output_db> <mono_low 0..1> <delta 0|1> [block]
+//        <drive_db> <os 1|4|8> <output_db> <mono_low 0..1> <delta 0|1>
+//        <mix 0..1> [block]
 
 #include <cstdlib>
 #include <iostream>
@@ -15,10 +16,11 @@
 
 int main (int argc, char* argv[])
 {
-    if (argc < 10)
+    if (argc < 11)
     {
         std::cerr << "usage: TagoClipRender in.wav out.wav <fl|hard|tanh> <threshold 1-127> "
-                     "<drive_db> <os 1|4|8> <output_db> <mono_low 0..1> <delta 0|1> [block]\n";
+                     "<drive_db> <os 1|4|8> <output_db> <mono_low 0..1> <delta 0|1> "
+                     "<mix 0..1> [block]\n";
         return 1;
     }
 
@@ -36,7 +38,8 @@ int main (int argc, char* argv[])
     params.outputDb = (float) atof (argv[7]);
     params.monoLow = (float) atof (argv[8]);
     params.delta = atoi (argv[9]) != 0;
-    const int blockSize = argc > 10 ? atoi (argv[10]) : 512;
+    params.mix = (float) atof (argv[10]);
+    const int blockSize = argc > 11 ? atoi (argv[11]) : 512;
 
     juce::AudioFormatManager formats;
     formats.registerBasicFormats();

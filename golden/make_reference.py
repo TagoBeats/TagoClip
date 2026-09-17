@@ -7,6 +7,7 @@ mirrored 1:1 by plugin/ClipEngine.h:
 
     mono-low (LR4, pre clipper) -> drive -> curve with oversampling
     -> optional delta (driven dry minus wet, exactly what the curve removed)
+    -> mix (blend against the raw plugin input, skipped in delta mode)
     -> output gain
 
 Run with the tagodsp venv python:
@@ -24,21 +25,27 @@ sys.path.insert(0, str(Path.home() / "Documents/tagodsp/python"))
 
 from tagodsp.distortion.clipper import Clipper  # noqa: E402
 from tagodsp.stereo.mono_low import MonoLow  # noqa: E402
-from tagodsp.utils.gain import db_to_lin  # noqa: E402
+from tagodsp.utils.gain import db_to_lin, dry_wet  # noqa: E402
 
 SR = 44100
 REFS = Path(__file__).resolve().parent / "refs"
 TOLERANCE = 5e-6
 
-# name, curve, threshold (Fruity steps), drive_db, os, output_db, mono_low, delta
+# name, curve, threshold (Fruity steps), drive_db, os, output_db, mono_low, delta, mix
 CONFIGS = [
-    {"name": "fruity_1to1",    "curve": "fl",   "threshold": 100, "drive": 0.0, "os": 1, "output": 0.0,  "monolow": 0.0,  "delta": 0},
-    {"name": "os8_default",    "curve": "fl",   "threshold": 100, "drive": 6.0, "os": 8, "output": 0.0,  "monolow": 0.0,  "delta": 0},
-    {"name": "os4_hard",       "curve": "hard", "threshold": 64,  "drive": 9.0, "os": 4, "output": -3.0, "monolow": 0.0,  "delta": 0},
-    {"name": "tanh_os8",       "curve": "tanh", "threshold": 51,  "drive": 8.0, "os": 8, "output": -2.0, "monolow": 0.0,  "delta": 0},
-    {"name": "monolow_only",   "curve": "fl",   "threshold": 127, "drive": 0.0, "os": 1, "output": 0.0,  "monolow": 0.67, "delta": 0},
-    {"name": "chain_808glue",  "curve": "fl",   "threshold": 84,  "drive": 6.0, "os": 8, "output": -1.0, "monolow": 0.67, "delta": 0},
-    {"name": "delta_listen",   "curve": "fl",   "threshold": 84,  "drive": 6.0, "os": 8, "output": 0.0,  "monolow": 0.0,  "delta": 1},
+    {"name": "fruity_1to1",    "curve": "fl",   "threshold": 100, "drive": 0.0, "os": 1, "output": 0.0,  "monolow": 0.0,  "delta": 0, "mix": 1.0},
+    {"name": "os8_default",    "curve": "fl",   "threshold": 100, "drive": 6.0, "os": 8, "output": 0.0,  "monolow": 0.0,  "delta": 0, "mix": 1.0},
+    {"name": "os4_hard",       "curve": "hard", "threshold": 64,  "drive": 9.0, "os": 4, "output": -3.0, "monolow": 0.0,  "delta": 0, "mix": 1.0},
+    {"name": "tanh_os8",       "curve": "tanh", "threshold": 51,  "drive": 8.0, "os": 8, "output": -2.0, "monolow": 0.0,  "delta": 0, "mix": 1.0},
+    {"name": "monolow_only",   "curve": "fl",   "threshold": 127, "drive": 0.0, "os": 1, "output": 0.0,  "monolow": 0.67, "delta": 0, "mix": 1.0},
+    {"name": "chain_808glue",  "curve": "fl",   "threshold": 84,  "drive": 6.0, "os": 8, "output": -1.0, "monolow": 0.67, "delta": 0, "mix": 1.0},
+    {"name": "delta_listen",   "curve": "fl",   "threshold": 84,  "drive": 6.0, "os": 8, "output": 0.0,  "monolow": 0.0,  "delta": 1, "mix": 1.0},
+    # v1.1 mix: parallel clipping, the case the r/trapproduction thread asked for.
+    {"name": "mix_parallel",   "curve": "fl",   "threshold": 64,  "drive": 9.0, "os": 8, "output": 0.0,  "monolow": 0.0,  "delta": 0, "mix": 0.5},
+    # Dry is the raw plugin input, so at mix 0 the mono-low must vanish too.
+    {"name": "mix_dry_only",   "curve": "fl",   "threshold": 84,  "drive": 6.0, "os": 4, "output": -1.0, "monolow": 0.67, "delta": 0, "mix": 0.0},
+    # Mix must not touch the delta path: same render as delta_listen.
+    {"name": "mix_delta_safe", "curve": "fl",   "threshold": 84,  "drive": 6.0, "os": 8, "output": 0.0,  "monolow": 0.0,  "delta": 1, "mix": 0.25},
 ]
 
 
@@ -80,7 +87,11 @@ def render(cfg: dict, x: np.ndarray) -> np.ndarray:
     clip = Clipper(cfg["curve"], cfg["threshold"] / 128.0, cfg["os"], drive_db=cfg["drive"])
     wet = np.column_stack([clip.process(y[:, c]) for c in range(2)])
     if cfg["delta"]:
+        # Delta is a listening tool, mix stays out of it.
         wet = y * db_to_lin(cfg["drive"]) - wet
+    else:
+        # Dry is the raw plugin input: pre drive, pre mono-low (Robin, 17.09.2026).
+        wet = dry_wet(x, wet, cfg["mix"])
     return wet * db_to_lin(cfg["output"])
 
 
