@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import Knob from "./Knob";
 import Scope from "./Scope";
 import Meters from "./Meters";
+import GrReadout from "./GrReadout";
 import { CURVE_CHIPS, OS_FACTORS, PARAMS, PRESETS, type CurveKey } from "./params";
 import { makeParam, makeToggle, type ParamHandle, type ToggleHandle } from "./bridge";
 import "./App.css";
@@ -93,7 +94,10 @@ export default function App() {
           </button>
         </div>
         <div className="header-right">
-          <span className="header-meta">Stereo&nbsp;·&nbsp;V1</span>
+          <span className="header-meta">Stereo&nbsp;·&nbsp;V1.1</span>
+          <div className="header-mix">
+            <Knob spec={PARAMS.mix} param={params.mix} />
+          </div>
           <button id="power" title="Bypass" onClick={() => bypassToggle.set(!bypassed)}>
             <svg viewBox="0 0 24 24">
               <path d="M12 3v8" />
@@ -114,6 +118,7 @@ export default function App() {
             >
               Δ DELTA
             </button>
+            <GrReadout bypassed={bypassed} driveDb={driveDb} thresholdSteps={thresholdSteps} />
             <Scope curve={curveKey} thresholdSteps={thresholdSteps} driveDb={driveDb} delta={delta} />
           </div>
           <div className="chip-rows">

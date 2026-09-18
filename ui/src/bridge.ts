@@ -110,11 +110,14 @@ export function makeToggle(id: string): ToggleHandle {
 }
 
 // Meter levels pushed from the editor timer ("levels" events, ~30 Hz).
-export function onLevels(fn: (levels: { in: number; out: number }) => void): () => void {
+// gr is the peak gain reduction of the last block in dB and is never above 0.
+export function onLevels(
+  fn: (levels: { in: number; out: number; gr: number }) => void
+): () => void {
   if (!inJuce) return () => {};
   const handle = window.__JUCE__!.backend.addEventListener("levels", (payload) => {
-    const p = payload as { in?: number; out?: number };
-    fn({ in: p.in ?? 0, out: p.out ?? 0 });
+    const p = payload as { in?: number; out?: number; gr?: number };
+    fn({ in: p.in ?? 0, out: p.out ?? 0, gr: p.gr ?? 0 });
   });
   return () => window.__JUCE__!.backend.removeEventListener(handle);
 }

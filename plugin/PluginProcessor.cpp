@@ -24,6 +24,7 @@ TagoClipProcessor::TagoClipProcessor()
     osRaw = apvts.getRawParameterValue (oversampling);
     outputRaw = apvts.getRawParameterValue (output);
     monoLowRaw = apvts.getRawParameterValue (monoLow);
+    mixRaw = apvts.getRawParameterValue (mix);
     deltaRaw = apvts.getRawParameterValue (delta);
 }
 
@@ -67,6 +68,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout TagoClipProcessor::createLay
                 return juce::String (juce::roundToInt (tagoclip::monoLowFreqHz (v))) + " Hz";
             })));
 
+    // Parallel clipping, asked for twice in the r/trapproduction thread. 100 %
+    // is the v1 behaviour, so the Fruity 1:1 null test holds at the default.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { mix, 1 }, "Mix",
+        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 100.0f,
+        juce::AudioParameterFloatAttributes {}.withStringFromValueFunction (
+            [] (float v, int) { return juce::String (v, 1) + " %"; })));
+
     layout.add (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { delta, 1 }, "Delta", false));
 
@@ -85,6 +94,7 @@ tagoclip::Parameters TagoClipProcessor::currentParameters() const noexcept
     p.oversample = tagoclip::osFactorTable[juce::jlimit (0, 2, (int) osRaw->load())];
     p.outputDb = outputRaw->load();
     p.monoLow = monoLowRaw->load();
+    p.mix = mixRaw->load() * 0.01f;
     p.delta = deltaRaw->load() > 0.5f;
     return p;
 }
@@ -123,6 +133,7 @@ void TagoClipProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     if (bypassParam->get())
     {
         storePeak (outputPeak, inPeak);
+        gainReductionDb.store (0.0f, std::memory_order_relaxed);
         return;
     }
 
@@ -130,6 +141,7 @@ void TagoClipProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     engine.process (buffer);
 
     storePeak (outputPeak, buffer.getMagnitude (0, buffer.getNumSamples()));
+    gainReductionDb.store (engine.lastGainReductionDb(), std::memory_order_relaxed);
 }
 
 void TagoClipProcessor::getStateInformation (juce::MemoryBlock& destData)

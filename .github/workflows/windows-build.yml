@@ -46,6 +46,25 @@ jobs:
           mkdir -p "build/TagoClip_artefacts/Release/VST3/TagoClip.vst3/Contents/Resources"
           cp THIRD_PARTY_LICENSES.txt "build/TagoClip_artefacts/Release/VST3/TagoClip.vst3/Contents/Resources/"
 
+      # Der Runner ist die einzige Windows-Instanz, die es hier gibt, also ist
+      # das auch der einzige Ort, an dem das Plugin je auf Windows geprueft
+      # wird. Ohne diesen Schritt geht ein Build ungetestet ans Release.
+      #
+      # continue-on-error mit Absicht: der Schritt soll melden, nicht blockieren.
+      # Ein Release am Stichtag darf nicht daran haengen, dass pluginval auf dem
+      # Runner in ein Timeout laeuft. Ergebnis steht im Log, Konsequenzen zieht
+      # ein Mensch. Sobald ein paar Laeufe sauber durch sind, kann das weg.
+      - name: Validate VST3 (pluginval)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          # Version gepinnt, damit ein pluginval-Update nicht unbemerkt die
+          # Ergebnisse verschiebt. Hochziehen ist eine bewusste Entscheidung.
+          curl -L -o pluginval.zip https://github.com/Tracktion/pluginval/releases/download/v1.0.3/pluginval_Windows.zip
+          Expand-Archive pluginval.zip -DestinationPath pluginval -Force
+          ./pluginval/pluginval.exe --strictness-level 5 --timeout-ms 300000 --validate-in-process `
+            "build/TagoClip_artefacts/Release/VST3/TagoClip.vst3"
+
       - uses: actions/upload-artifact@v4
         with:
           name: TagoClip-VST3-Windows
@@ -60,5 +79,31 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cd build/TagoClip_artefacts/Release/VST3
-          7z a -tzip "TagoClip-${{ github.ref_name }}-Windows-VST3.zip" TagoClip.vst3 > /dev/null
+          # Eine nackte .vst3 im Zip laesst den Nutzer raten, wohin damit, und
+          # sagt ihm nichts ueber die WebView2-Runtime. Fehlt die, bleibt das
+          # Fenster schwarz, genau wie auf zu alten macOS-Versionen.
+          cat > README.txt <<'TXT'
+          TagoClip ${{ github.ref_name }} - Windows VST3
+
+          INSTALL
+            Copy TagoClip.vst3 into:
+              C:\Program Files\Common Files\VST3
+            Then rescan your plugin folders in the DAW.
+
+          REQUIREMENTS
+            Windows 10 or later, 64-bit.
+            Microsoft Edge WebView2 Runtime, which draws the plugin's interface.
+            It ships with Windows 11 and arrives on Windows 10 through Windows
+            Update. If the plugin loads but its window stays black, that runtime
+            is missing. Free download:
+              https://developer.microsoft.com/microsoft-edge/webview2/
+
+          SUPPORT
+            Just reply to the download mail, or write to plugins@robinbusse.dev.
+            Tell me your Windows version and DAW, that is usually enough to
+            pin it down.
+
+          TagoBeats - https://tagobeats.com
+          TXT
+          7z a -tzip "TagoClip-${{ github.ref_name }}-Windows-VST3.zip" TagoClip.vst3 README.txt > /dev/null
           gh release upload "${{ github.ref_name }}" "TagoClip-${{ github.ref_name }}-Windows-VST3.zip" --clobber --repo "${{ github.repository }}"

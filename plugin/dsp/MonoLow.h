@@ -68,20 +68,23 @@ public:
         updateCoefficients();
     }
 
+    void processSample (float& left, float& right) noexcept
+    {
+        const double l = left;
+        const double r = right;
+        const double lowL = lp[0][1].process (lp[0][0].process (l));
+        const double lowR = lp[1][1].process (lp[1][0].process (r));
+        const double highL = hp[0][1].process (hp[0][0].process (l));
+        const double highR = hp[1][1].process (hp[1][0].process (r));
+        const double mono = 0.5 * (lowL + lowR);
+        left = (float) (highL + mono);
+        right = (float) (highR + mono);
+    }
+
     void process (float* left, float* right, int numSamples) noexcept
     {
         for (int i = 0; i < numSamples; ++i)
-        {
-            const double l = left[i];
-            const double r = right[i];
-            const double lowL = lp[0][1].process (lp[0][0].process (l));
-            const double lowR = lp[1][1].process (lp[1][0].process (r));
-            const double highL = hp[0][1].process (hp[0][0].process (l));
-            const double highR = hp[1][1].process (hp[1][0].process (r));
-            const double mono = 0.5 * (lowL + lowR);
-            left[i] = (float) (highL + mono);
-            right[i] = (float) (highR + mono);
-        }
+            processSample (left[i], right[i]);
     }
 
     void reset() noexcept

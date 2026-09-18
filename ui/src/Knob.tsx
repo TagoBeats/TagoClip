@@ -33,6 +33,23 @@ export default function Knob({ spec, param }: { spec: ParamSpec; param: ParamHan
     return param.subscribe(() => setValue(param.getScaled()));
   }, [param]);
 
+  // Knob position is normalised 0..1. With spec.center the mapping is piecewise
+  // so the centre value lands at 0.5, i.e. straight up, on an asymmetric range.
+  const toNorm = (v: number) => {
+    const c = spec.center;
+    if (c === undefined) return (v - spec.min) / (spec.max - spec.min);
+    return v <= c
+      ? (0.5 * (v - spec.min)) / (c - spec.min)
+      : 0.5 + (0.5 * (v - c)) / (spec.max - c);
+  };
+  const fromNorm = (n: number) => {
+    const c = spec.center;
+    if (c === undefined) return spec.min + n * (spec.max - spec.min);
+    return n <= 0.5
+      ? spec.min + (n / 0.5) * (c - spec.min)
+      : c + ((n - 0.5) / 0.5) * (spec.max - c);
+  };
+
   const set = (v: number, fine: boolean) => {
     v = Math.min(spec.max, Math.max(spec.min, v));
     if (spec.step) v = Math.round(v / spec.step) * spec.step;
@@ -52,7 +69,10 @@ export default function Knob({ spec, param }: { spec: ParamSpec; param: ParamHan
     if (!(e.target as Element).hasPointerCapture?.(e.pointerId)) return;
     const fine = e.shiftKey;
     const px = fine ? 900 : 220; // pixels for full sweep
-    set(drag.current.startVal + ((drag.current.startY - e.clientY) * range) / px, fine);
+    // Drag in knob space, not in value space, so the two halves of a centred
+    // knob each get half the travel. Identical to before for linear knobs.
+    const moved = toNorm(drag.current.startVal) + (drag.current.startY - e.clientY) / px;
+    set(fromNorm(Math.min(1, Math.max(0, moved))), fine);
   };
   const onPointerUp = (e: React.PointerEvent) => {
     (e.target as Element).releasePointerCapture?.(e.pointerId);
@@ -79,13 +99,15 @@ export default function Knob({ spec, param }: { spec: ParamSpec; param: ParamHan
   // ---- geometry, straight from the mockup ----
   const s = spec.size;
   const c = s / 2;
-  const r = s / 2 - 7;
+  const r = s / 2 - (spec.ringInset ?? 7);
   const small = s < 80;
   const nTicks = small ? 12 : 24;
+  const showTicks = spec.ticks ?? true;
   const gid = `face-${spec.label}`;
 
   const ticks = useMemo(() => {
-    const out = [];
+    const out: React.ReactElement[] = [];
+    if (!showTicks) return out;
     for (let i = 0; i <= nTicks; i++) {
       const ang = START + (i / nTicks) * SWEEP;
       const major = i % (nTicks / 4) === 0;
@@ -96,9 +118,9 @@ export default function Knob({ spec, param }: { spec: ParamSpec; param: ParamHan
       );
     }
     return out;
-  }, [c, r, nTicks]);
+  }, [c, r, nTicks, showTicks]);
 
-  const norm = (value - spec.min) / range;
+  const norm = toNorm(value);
   const ang = START + norm * SWEEP;
   const from = spec.bipolar ? 0 : START; // bipolar fills from 12 o'clock
   const [px0, py0] = polar(c, c, r * 0.42, ang);
