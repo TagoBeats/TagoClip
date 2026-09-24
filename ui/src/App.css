@@ -17,6 +17,8 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+html, body { width: 100%; height: 100%; }
+
 body {
   background: var(--bg-deep);
   font-family: "Archivo", sans-serif;
@@ -24,10 +26,20 @@ body {
   overflow: hidden;
 }
 
-/* ---------- Plugin window: fixed 620 x 380 ---------- */
-#plugin {
+/* The canvas below is a fixed size, so it has to be scaled and placed into
+   whatever viewport the host gives us. All three vars come from fit.ts. */
+#root {
   position: relative;
+  width: 100%; height: 100%;
+}
+
+/* ---------- Plugin window: design canvas 620 x 380, scaled to fit ---------- */
+#plugin {
+  position: absolute;
+  top: 0; left: 0;
   width: 620px; height: 380px;
+  transform: translate(var(--ui-x, 0px), var(--ui-y, 0px)) scale(var(--ui-scale, 1));
+  transform-origin: top left;
   background: var(--bg);
   border: 1px solid var(--hairline);
   border-radius: 10px;
