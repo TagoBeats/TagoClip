@@ -22,6 +22,9 @@
 # Env overrides:
 #   SKIP_NOTARIZE=1   sign + pkg/dmg only
 #   SKIP_SIGN=1       unsigned local test build (pkg only, no dmg)
+#   MACOS_MIN=10.13   lower the deployment target (default 11.0)
+#   BUILD_SUFFIX=-x   suffix for the build dir and the artefact names, so a
+#                     side build never overwrites the real release
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -34,11 +37,22 @@ APP_SIGNING_ID="${APP_SIGNING_ID:-Developer ID Application: Robin Busse (3CU95LX
 PKG_SIGNING_ID="${PKG_SIGNING_ID:-Developer ID Installer: Robin Busse (3CU95LXM7N)}"
 NOTARIZE_PROFILE="${NOTARIZE_PROFILE:-DubCheck-Notarize}"
 
-BUILD_DIR="build-release"
-PKG_NAME="TagoClip-$VERSION.pkg"
-DMG_NAME="TagoClip-$VERSION.dmg"
+# Deployment target and artefact suffix are overridable so the macOS 10.13
+# compatibility build can be produced without editing this file. 11.0 stays
+# the default and the only floor that ships publicly: a lower one needs the
+# CSS and build-target work in ui/ (see the compat block in ui/src/App.css)
+# and, more importantly, someone with that OS who has actually run it.
+MACOS_MIN="${MACOS_MIN:-11.0}"
+BUILD_SUFFIX="${BUILD_SUFFIX:-}"
 
-echo "==> TagoClip $VERSION release build"
+# Own build dir per target: CMake caches the deployment target, so sharing
+# build-release/ between an 11.0 and a 10.13 configure is how you end up
+# shipping a binary with the wrong floor and no sign of it.
+BUILD_DIR="build-release$BUILD_SUFFIX"
+PKG_NAME="TagoClip-$VERSION$BUILD_SUFFIX.pkg"
+DMG_NAME="TagoClip-$VERSION$BUILD_SUFFIX.dmg"
+
+echo "==> TagoClip $VERSION release build (deployment target $MACOS_MIN)"
 
 echo "==> Building UI bundle (ui/webui.zip)"
 bash scripts/build-ui.sh
@@ -46,7 +60,7 @@ bash scripts/build-ui.sh
 echo "==> Configuring + building Release (VST3 + AU, universal binary)"
 cmake -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DTAGOCLIP_DEV_UI=OFF \
     -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
-    -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+    -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_MIN"
 cmake --build "$BUILD_DIR" --target TagoClip_VST3 TagoClip_AU -j "$(sysctl -n hw.ncpu)"
 
 ART="$BUILD_DIR/TagoClip_artefacts/Release"
