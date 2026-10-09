@@ -45,6 +45,22 @@ NOTARIZE_PROFILE="${NOTARIZE_PROFILE:-DubCheck-Notarize}"
 MACOS_MIN="${MACOS_MIN:-11.0}"
 BUILD_SUFFIX="${BUILD_SUFFIX:-}"
 
+# Anything below 11.0 also needs a conservative installer shape. Two things in
+# the default path were written by a toolchain that assumes a current macOS:
+#   - the dmg gets an APFS filesystem, and an APFS image written by macOS 26
+#     can come back as "no mountable file systems" on 10.13. HFS+ mounts
+#     everywhere and costs nothing here.
+#   - hostArchitectures lists arm64, a token an Installer from before Apple
+#     silicon has never seen. The binary stays universal either way; this only
+#     changes what the installer is told to accept.
+HOST_ARCHS="arm64,x86_64"
+DMG_FS_ARGS=()
+if [[ "$(printf '%s\n' "$MACOS_MIN" 11.0 | sort -V | head -1)" == "$MACOS_MIN" && "$MACOS_MIN" != "11.0" ]]; then
+    echo "==> Legacy installer shape (deployment target $MACOS_MIN < 11.0): HFS+ dmg, x86_64-only hostArchitectures"
+    HOST_ARCHS="x86_64"
+    DMG_FS_ARGS=(-fs HFS+)
+fi
+
 # Own build dir per target: CMake caches the deployment target, so sharing
 # build-release/ between an 11.0 and a 10.13 configure is how you end up
 # shipping a binary with the wrong floor and no sign of it.
@@ -109,7 +125,7 @@ cat > "$PKGS/distribution.xml" <<EOF
     <license file="license.html"/>
     <conclusion file="conclusion.html"/>
     <options customize="always" require-scripts="false" rootVolumeOnly="true"
-             hostArchitectures="arm64,x86_64"/>
+             hostArchitectures="$HOST_ARCHS"/>
     <domains enable_localSystem="true"/>
     <choices-outline>
         <line choice="vst3"/>
@@ -165,7 +181,7 @@ if [[ "${SKIP_SIGN:-0}" != "1" ]]; then
     cp "dist/$PKG_NAME" "$DMG_STAGING/"
     rm -f "dist/$DMG_NAME"
     hdiutil create -volname "TagoClip $VERSION" -srcfolder "$DMG_STAGING" \
-        -ov -format UDZO "dist/$DMG_NAME"
+        "${DMG_FS_ARGS[@]}" -ov -format UDZO "dist/$DMG_NAME"
 
     echo "==> Codesigning dmg"
     codesign --force --sign "$APP_SIGNING_ID" "dist/$DMG_NAME"

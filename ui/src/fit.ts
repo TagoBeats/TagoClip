@@ -38,12 +38,36 @@ export function fitToViewport(design: { width: number; height: number } = DESIGN
 
   // The resize event alone misses host-driven resizes that do not go through
   // the window, which is exactly the case a WebView in a plugin window hits.
-  const observer = new ResizeObserver(apply);
-  observer.observe(document.documentElement);
+  //
+  // ResizeObserver is Safari 13.1, and this UI renders in whatever WebKit the
+  // host OS ships: on macOS 10.13 that is Safari 13.1 at best and older on a
+  // machine that was never updated. An unguarded `new ResizeObserver` throws a
+  // ReferenceError, and because this runs during mount it takes the whole UI
+  // down to a blank window with nothing the user can see. The polling fallback
+  // is coarse but keeps the editor usable; the resize listener still covers
+  // every host that drives the window itself.
+  let observer: ResizeObserver | undefined;
+  let poll: ReturnType<typeof setInterval> | undefined;
+
+  if (typeof ResizeObserver === "function") {
+    observer = new ResizeObserver(apply);
+    observer.observe(document.documentElement);
+  } else {
+    let lastW = window.innerWidth;
+    let lastH = window.innerHeight;
+    poll = setInterval(() => {
+      if (window.innerWidth === lastW && window.innerHeight === lastH) return;
+      lastW = window.innerWidth;
+      lastH = window.innerHeight;
+      apply();
+    }, 250);
+  }
+
   window.addEventListener("resize", apply);
 
   return () => {
-    observer.disconnect();
+    observer?.disconnect();
+    if (poll !== undefined) clearInterval(poll);
     window.removeEventListener("resize", apply);
   };
 }

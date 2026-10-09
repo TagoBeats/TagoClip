@@ -1,3 +1,6 @@
+// First import on purpose: the shims have to be installed before React or any
+// component module is evaluated.
+import './legacy-webkit.ts'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
