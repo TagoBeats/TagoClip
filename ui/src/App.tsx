@@ -31,6 +31,41 @@ function useToggle(toggle: ToggleHandle): boolean {
   return value;
 }
 
+// Which preset is loaded is read back off the parameter values instead of being
+// remembered in React. The WebView dies with the plugin window, so a local
+// index came back as INIT on every reopen while the sound was still the
+// preset's: reported 14.09., 20.09. (Ableton 12.4.5) and 13.10.2026. Deriving
+// it also stops the label from claiming a preset after a knob was moved.
+// Returns -1 when nothing matches, which the header shows as CUSTOM.
+function matchPreset(
+  values: Record<string, number>,
+  curve: CurveKey,
+  osFactor: number,
+  held: number
+): number {
+  const hits: number[] = [];
+
+  PRESETS.forEach(([, vals, presetCurve, presetOs], i) => {
+    if (presetCurve !== curve || presetOs !== osFactor) return;
+
+    const same = Object.entries(vals).every(([key, v]) => {
+      const spec = PARAMS[key];
+      // Half a step where the parameter is stepped, otherwise a thousandth of
+      // the range: wide enough for the float32 round trip through the host,
+      // tight enough that a real knob move counts as a change.
+      const eps = spec.step > 0 ? spec.step / 2 : (spec.max - spec.min) * 1e-3;
+      return Math.abs(values[key] - v) < eps;
+    });
+
+    if (same) hits.push(i);
+  });
+
+  if (hits.length === 0) return -1;
+  // INIT and FL SOFT CLIP carry identical values by design, so a plain first
+  // match would rename the user's pick. Keep whatever is already on screen.
+  return hits.includes(held) ? held : hits[0];
+}
+
 export default function App() {
   const params = useMemo(
     () =>
@@ -55,11 +90,15 @@ export default function App() {
   const driveDb = useScaled(params.drive);
   const thresholdSteps = useScaled(params.threshold);
   const outputDb = useScaled(params.output);
+  const monoLowPos = useScaled(params.monolow);
+  const mixPct = useScaled(params.mix);
 
-  const [presetIdx, setPresetIdx] = useState(0);
+  // Only a tiebreaker for value-identical presets and the step base while the
+  // values sit on no preset at all. The label never comes from here.
+  const [heldIdx, setHeldIdx] = useState(0);
   const applyPreset = (i: number) => {
     const idx = (i + PRESETS.length) % PRESETS.length;
-    setPresetIdx(idx);
+    setHeldIdx(idx);
     const [, vals, curve, osFactor] = PRESETS[idx];
     for (const [key, v] of Object.entries(vals)) params[key].setScaled(v);
     curveParam.setScaled(CURVE_CHIPS.findIndex((c) => c.key === curve));
@@ -78,18 +117,29 @@ export default function App() {
   const cycleOs = () => setOsFactor(osFactor === 1 ? 4 : osFactor === 4 ? 8 : 1);
   const curveKey: CurveKey = CURVE_CHIPS[curveIdx]?.key ?? "fl";
 
+  const matchedIdx = matchPreset(
+    { drive: driveDb, threshold: thresholdSteps, output: outputDb, monolow: monoLowPos, mix: mixPct },
+    curveKey,
+    osFactor,
+    heldIdx
+  );
+  const presetName = matchedIdx >= 0 ? PRESETS[matchedIdx][0] : "CUSTOM";
+  // Stepping starts where the label stands; on CUSTOM it continues from the
+  // preset that was loaded last, so the arrows never jump back to INIT.
+  const stepBase = matchedIdx >= 0 ? matchedIdx : heldIdx;
+
   return (
     <div id="plugin" className={bypassed ? "bypassed" : ""}>
       <header>
         <div className="wordmark">TAGOCLIP</div>
         <div className="preset">
-          <button id="prev" title="Previous preset" onClick={() => applyPreset(presetIdx - 1)}>
+          <button id="prev" title="Previous preset" onClick={() => applyPreset(stepBase - 1)}>
             ‹
           </button>
           <div className="name" id="preset-name">
-            {PRESETS[presetIdx][0]}
+            {presetName}
           </div>
-          <button id="next" title="Next preset" onClick={() => applyPreset(presetIdx + 1)}>
+          <button id="next" title="Next preset" onClick={() => applyPreset(stepBase + 1)}>
             ›
           </button>
         </div>
