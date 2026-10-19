@@ -52,6 +52,23 @@ std::optional<juce::WebBrowserComponent::Resource> TagoClipEditor::lookupResourc
     return std::nullopt;
 }
 
+
+#if JUCE_WINDOWS
+// WebView2 keeps a browser profile in its user data folder. The bare %TEMP%
+// root is shared with every other app that does the same, so the plugin gets
+// its own folder under %LOCALAPPDATA%. Hardening after a Cubase 12 / Windows 10
+// crash on insert (report 19.10.2026); the crash cause itself is not proven.
+static juce::File webViewDataFolder()
+{
+    auto dir = juce::File::getSpecialLocation (juce::File::windowsLocalAppData)
+                   .getChildFile ("TagoBeats")
+                   .getChildFile ("TagoClip")
+                   .getChildFile ("WebView2");
+    dir.createDirectory();
+    return dir;
+}
+#endif
+
 TagoClipEditor::TagoClipEditor (TagoClipProcessor& p)
     : AudioProcessorEditor (p),
       clipProcessor (p),
@@ -62,8 +79,7 @@ TagoClipEditor::TagoClipEditor (TagoClipProcessor& p)
                    .withBackend (juce::WebBrowserComponent::Options::Backend::webview2)
                    .withWinWebView2Options (
                        juce::WebBrowserComponent::Options::WinWebView2 {}
-                           .withUserDataFolder (juce::File::getSpecialLocation (
-                               juce::File::SpecialLocationType::tempDirectory)))
+                           .withUserDataFolder (webViewDataFolder()))
 #else
                    .withBackend (juce::WebBrowserComponent::Options::Backend::defaultBackend)
 #endif

@@ -47,6 +47,14 @@ if(WIN32)
     target_compile_definitions(TagoClip PRIVATE JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1)
 endif()
 
+# Debug symbols for Release on Windows, so a crash dump from a tester can be
+# read against the exact build. /OPT:REF and /OPT:ICF keep the optimised
+# output that /DEBUG would otherwise turn off.
+if(MSVC)
+    target_compile_options(TagoClip PRIVATE /Zi)
+    target_link_options(TagoClip_VST3 PRIVATE /DEBUG /OPT:REF /OPT:ICF)
+endif()
+
 target_link_libraries(TagoClip
     PRIVATE
         TagoClipAssets

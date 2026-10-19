@@ -54,6 +54,21 @@ jobs:
       # Ein Release am Stichtag darf nicht daran haengen, dass pluginval auf dem
       # Runner in ein Timeout laeuft. Ergebnis steht im Log, Konsequenzen zieht
       # ein Mensch. Sobald ein paar Laeufe sauber durch sind, kann das weg.
+      # The PDB of exactly this build, so a tester's crash dump can be read.
+      # Keep the artifact of every build that goes out to people.
+      - name: Collect debug symbols
+        shell: bash
+        run: |
+          mkdir -p symbols
+          find build -name "*.pdb" -path "*Release*" -exec cp {} symbols/ \;
+          ls -l symbols
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TagoClip-PDB-${{ github.sha }}
+          path: symbols
+          retention-days: 90
+
       - name: Validate VST3 (pluginval)
         continue-on-error: true
         shell: pwsh
