@@ -87,6 +87,22 @@ public:
             processSample (left[i], right[i]);
     }
 
+    // Phase-matched dry path for the mix blend: LP + HP per channel with the
+    // same coefficients as processSample but no mono sum. That sum is a 2nd
+    // order allpass, so a raw dry signal blended against the mono-low wet path
+    // combs at the crossover (mid content nulls at mix 50%). Running the dry
+    // side through this makes mid content phase coherent at every mix value.
+    // Own filter state, so it never disturbs the wet path.
+    void processDrySample (float& left, float& right) noexcept
+    {
+        const double l = left;
+        const double r = right;
+        left = (float) (dlp[0][1].process (dlp[0][0].process (l))
+                        + dhp[0][1].process (dhp[0][0].process (l)));
+        right = (float) (dlp[1][1].process (dlp[1][0].process (r))
+                         + dhp[1][1].process (dhp[1][0].process (r)));
+    }
+
     void reset() noexcept
     {
         for (int ch = 0; ch < 2; ++ch)
@@ -94,6 +110,8 @@ public:
             {
                 lp[ch][s].reset();
                 hp[ch][s].reset();
+                dlp[ch][s].reset();
+                dhp[ch][s].reset();
             }
     }
 
@@ -105,11 +123,14 @@ private:
             {
                 lp[ch][s].setButterworth (false, freqHz, sr);
                 hp[ch][s].setButterworth (true, freqHz, sr);
+                dlp[ch][s].setButterworth (false, freqHz, sr);
+                dhp[ch][s].setButterworth (true, freqHz, sr);
             }
     }
 
     double sr = 44100.0;
     double freqHz = 120.0;
     Biquad lp[2][2], hp[2][2];
+    Biquad dlp[2][2], dhp[2][2]; // dry allpass, see processDrySample
 };
 } // namespace tagoclip

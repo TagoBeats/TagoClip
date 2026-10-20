@@ -7,7 +7,8 @@ mirrored 1:1 by plugin/ClipEngine.h:
 
     mono-low (LR4, pre clipper) -> drive -> curve with oversampling
     -> optional delta (driven dry minus wet, exactly what the curve removed)
-    -> mix (blend against the raw plugin input, skipped in delta mode)
+    -> mix (blend against the raw plugin input, allpass-matched to mono-low when
+      that is on; skipped in delta mode)
     -> output gain
 
 Run with the tagodsp venv python:
@@ -24,7 +25,8 @@ import soundfile as sf
 sys.path.insert(0, str(Path.home() / "Documents/tagodsp/python"))
 
 from tagodsp.distortion.clipper import Clipper  # noqa: E402
-from tagodsp.stereo.mono_low import MonoLow  # noqa: E402
+from tagodsp.filters.biquad import highpass, lowpass  # noqa: E402
+from tagodsp.stereo.mono_low import MonoLow, _LR4Band  # noqa: E402
 from tagodsp.utils.gain import db_to_lin, dry_wet  # noqa: E402
 
 SR = 44100
@@ -42,7 +44,8 @@ CONFIGS = [
     {"name": "delta_listen",   "curve": "fl",   "threshold": 84,  "drive": 6.0, "os": 8, "output": 0.0,  "monolow": 0.0,  "delta": 1, "mix": 1.0},
     # v1.1 mix: parallel clipping, the case the r/trapproduction thread asked for.
     {"name": "mix_parallel",   "curve": "fl",   "threshold": 64,  "drive": 9.0, "os": 8, "output": 0.0,  "monolow": 0.0,  "delta": 0, "mix": 0.5},
-    # Dry is the raw plugin input, so at mix 0 the mono-low must vanish too.
+    # Dry is the raw plugin input run through the mono-low allpass (no mono sum),
+    # so at mix 0 the output is a pure allpass of the input.
     {"name": "mix_dry_only",   "curve": "fl",   "threshold": 84,  "drive": 6.0, "os": 4, "output": -1.0, "monolow": 0.67, "delta": 0, "mix": 0.0},
     # Mix must not touch the delta path: same render as delta_listen.
     {"name": "mix_delta_safe", "curve": "fl",   "threshold": 84,  "drive": 6.0, "os": 8, "output": 0.0,  "monolow": 0.0,  "delta": 1, "mix": 0.25},
@@ -80,6 +83,18 @@ def make_input() -> np.ndarray:
     return x
 
 
+def mono_low_dry_allpass(x: np.ndarray, freq: float) -> np.ndarray:
+    """Dry side of the mix when mono-low is on: the LR4 LP + HP sum per channel,
+    a 2nd order allpass, i.e. the mono-low crossover without the mono sum. It
+    keeps dry phase coherent with the wet path (mirrors MonoLow::processDrySample)."""
+    out = np.empty_like(x)
+    for ch in range(2):
+        lo = _LR4Band(lowpass, freq, SR).process(x[:, ch])
+        hi = _LR4Band(highpass, freq, SR).process(x[:, ch])
+        out[:, ch] = lo + hi
+    return out
+
+
 def render(cfg: dict, x: np.ndarray) -> np.ndarray:
     y = x.copy()
     if cfg["monolow"] >= 0.03:
@@ -91,7 +106,12 @@ def render(cfg: dict, x: np.ndarray) -> np.ndarray:
         wet = y * db_to_lin(cfg["drive"]) - wet
     else:
         # Dry is the raw plugin input: pre drive, pre mono-low (Robin, 17.09.2026).
-        wet = dry_wet(x, wet, cfg["mix"])
+        # With mono-low on it goes through the matching allpass so dry and wet
+        # stay phase coherent (otherwise mid content notches at the crossover).
+        dry = x
+        if cfg["monolow"] >= 0.03:
+            dry = mono_low_dry_allpass(x, 20.0 * 20.0 ** cfg["monolow"])
+        wet = dry_wet(dry, wet, cfg["mix"])
     return wet * db_to_lin(cfg["output"])
 
 
