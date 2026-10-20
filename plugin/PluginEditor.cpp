@@ -84,10 +84,11 @@ static void releaseWebViewFocus (juce::Component& editor)
     if (auto* peer = editor.getPeer())
     {
         const auto peerWindow = (HWND) peer->getNativeHandle();
-        const auto focused    = GetFocus();
-
-        if (peerWindow != nullptr && focused != nullptr && focused != peerWindow
-            && IsChild (peerWindow, focused))
+        // No IsChild guard: WebView2 renders in its own browser process, so
+        // GetFocus() on this thread can return null or a window outside our
+        // tree while the web view holds focus. Only JS calls this, right after
+        // a click inside the web view, so moving focus unconditionally is safe.
+        if (peerWindow != nullptr && GetFocus() != peerWindow)
             SetFocus (peerWindow);
     }
 }
