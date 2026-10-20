@@ -121,3 +121,15 @@ export function onLevels(
   });
   return () => window.__JUCE__!.backend.removeEventListener(handle);
 }
+
+// Windows hosts: the WebView2 takes OS keyboard focus on click and swallows
+// every key, so DAW shortcuts (space for play/stop) stop working. The UI has no
+// text input, so hand focus back to the host after each click. Release on
+// pointerup, never pointerdown, so knob drags are untouched. A no-op on macOS.
+export function installFocusRelease(): void {
+  if (!inJuce) return;
+  const release = () => void Juce.getNativeFunction("releaseFocus")();
+  window.addEventListener("pointerup", release, true);
+  window.addEventListener("pointercancel", release, true);
+  window.addEventListener("focus", release);
+}

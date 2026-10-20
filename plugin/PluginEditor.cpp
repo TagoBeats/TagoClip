@@ -1,6 +1,10 @@
 #include "PluginEditor.h"
 #include "BinaryData.h"
 
+#if JUCE_WINDOWS
+ #include <windows.h>
+#endif
+
 namespace
 {
 // The approved mockup canvas. The web UI scales itself to any window on this
@@ -69,6 +73,26 @@ static juce::File webViewDataFolder()
 }
 #endif
 
+#if JUCE_WINDOWS
+// WebView2 takes Win32 keyboard focus on click and swallows every key, so the
+// host never sees play/stop. The UI has no text input, so after each click it
+// asks us to hand focus back to the editor's own HWND. JUCE forwards the keys
+// it does not handle from there to the host window, the same path every
+// native JUCE editor uses. Only acts while focus sits inside the web view.
+static void releaseWebViewFocus (juce::Component& editor)
+{
+    if (auto* peer = editor.getPeer())
+    {
+        const auto peerWindow = (HWND) peer->getNativeHandle();
+        const auto focused    = GetFocus();
+
+        if (peerWindow != nullptr && focused != nullptr && focused != peerWindow
+            && IsChild (peerWindow, focused))
+            SetFocus (peerWindow);
+    }
+}
+#endif
+
 TagoClipEditor::TagoClipEditor (TagoClipProcessor& p)
     : AudioProcessorEditor (p),
       clipProcessor (p),
@@ -85,6 +109,17 @@ TagoClipEditor::TagoClipEditor (TagoClipProcessor& p)
 #endif
                    .withNativeIntegrationEnabled()
                    .withResourceProvider (lookupResource)
+                   .withNativeFunction ("releaseFocus",
+                                        [this] (const juce::Array<juce::var>&,
+                                                juce::WebBrowserComponent::NativeFunctionCompletion done)
+                                        {
+#if JUCE_WINDOWS
+                                            releaseWebViewFocus (*this);
+#else
+                                            (void) this;
+#endif
+                                            done (juce::var());
+                                        })
                    .withOptionsFrom (driveRelay)
                    .withOptionsFrom (thresholdRelay)
                    .withOptionsFrom (curveRelay)
