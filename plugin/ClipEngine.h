@@ -60,11 +60,10 @@ private:
 };
 
 // Signal chain, mirrored 1:1 by golden/make_reference.py:
-//   mono-low (LR4, pre clipper) -> drive -> curve with oversampling
+//   mono-low (side-only LR4 highpass, pre clipper) -> drive -> curve with oversampling
 //   -> optional delta (driven dry minus wet, i.e. exactly what the curve
 //      removed, in positive polarity)
-//   -> mix (blend against the raw plugin input, allpass-matched to mono-low when
-//      that is on; skipped in delta mode)
+//   -> mix (blend against the raw plugin input; skipped in delta mode)
 //   -> output gain
 // Latency is a constant 20 samples in every mode: the resampler pair costs
 // 10 + 10, the os-off path is delayed to match so toggling never moves PDC
@@ -118,7 +117,7 @@ public:
                            numCh > 1 ? buffer.getWritePointer (1) : nullptr };
 
         // Mono-low runs inside the sample loop now, so the raw input is still
-        // available as the dry side of the mix (allpass-matched when active).
+        // available as the dry side of the mix.
         const bool useMonoLow =
             chan[1] != nullptr && params.monoLow >= Parameters::monoLowOffBelow;
 
@@ -137,13 +136,9 @@ public:
 
             float dry[2] = { chan[0][i], chan[1] != nullptr ? chan[1][i] : 0.0f };
 
-            // Dry side of the mix is the raw input, but with mono-low active it
-            // takes the matching allpass so it stays phase coherent with the
-            // wet path (see MonoLow::processDrySample). Mono-low off leaves it
-            // bit-identical to the raw input. Runs in delta mode too so the filter
-            // state is warm when delta is switched off.
-            if (useMonoLow)
-                monoLow.processDrySample (dry[0], dry[1]);
+            // Dry side of the mix is the raw input. Mono-low leaves the mid
+            // untouched, so dry and wet stay phase coherent without a matching
+            // allpass on the dry side (see MonoLow).
 
             if (useMonoLow)
                 monoLow.processSample (chan[0][i], chan[1][i]);
