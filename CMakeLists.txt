@@ -6,6 +6,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(TAGOCLIP_DEV_UI "Load the plugin UI from the Vite dev server (http://localhost:5173) instead of the bundled build" OFF)
 
+# Windows: link the C++ runtime statically. A /MD build from VS 17.10 or newer
+# needs msvcp140.dll 14.40+ at runtime and crashes with a null read inside
+# msvcp140 (std::mutex lock) on machines that still have an older one, seen in
+# a Cubase 12 crash dump with msvcp140 14.34. Static linking removes the
+# dependency on whatever runtime the host machine has installed. Set before
+# JUCE so every target in the tree uses the same runtime.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 add_subdirectory(third_party/JUCE)
 
 juce_add_plugin(TagoClip

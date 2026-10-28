@@ -40,6 +40,21 @@ jobs:
       - name: Build VST3
         run: cmake --build build --config Release --target TagoClip_VST3
 
+      # Guard for the static runtime in CMakeLists.txt: a binary that still
+      # imports msvcp140/vcruntime140 crashes on machines with an old runtime
+      # (Cubase 12 dump, msvcp140 14.34). Import names sit in the PE as plain
+      # ASCII, so a grep is enough and needs no VS dev shell.
+      - name: Check C++ runtime is linked statically
+        shell: bash
+        run: |
+          BIN="build/TagoClip_artefacts/Release/VST3/TagoClip.vst3/Contents/x86_64-win/TagoClip.vst3"
+          test -f "$BIN"
+          if grep -a -i -o -E "(msvcp140|vcruntime140)[_0-9a-z]*\.dll" "$BIN" | sort -u | grep .; then
+            echo "::error::$BIN still imports the dynamic MSVC runtime"
+            exit 1
+          fi
+          echo "no dynamic MSVC runtime imports in $BIN"
+
       - name: Embed third-party attribution
         shell: bash
         run: |
