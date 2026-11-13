@@ -21,10 +21,17 @@ juce_add_plugin(TagoClip
     BUNDLE_ID com.tagobeats.tagoclip
     PLUGIN_MANUFACTURER_CODE Tago
     PLUGIN_CODE TgCl
-    FORMATS AU VST3 Standalone
+    FORMATS AU VST3 AAX Standalone
     PRODUCT_NAME "TagoClip"
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
+    # AAX: JUCE 8 bundles the AAX SDK and wires it up on its own (no
+    # juce_set_aax_sdk_path needed). The identifier must stay stable once a
+    # build ships, Pro Tools keys presets and sessions on it. Mono and stereo
+    # in/out are declared by TagoClipProcessor::isBusesLayoutSupported.
+    # Signing needs PACE wraptool, see the TODO in scripts/build_release.sh.
+    AAX_IDENTIFIER com.tagobeats.tagoclip
+    AAX_CATEGORY Dynamics
     NEEDS_WEB_BROWSER TRUE
     NEEDS_WEBVIEW2 TRUE
     COPY_PLUGIN_AFTER_BUILD FALSE)

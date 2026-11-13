@@ -47,6 +47,10 @@ echo "==> Configuring + building Release (VST3 + AU, universal binary)"
 cmake -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DTAGOCLIP_DEV_UI=OFF \
     -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+# TODO(aax): TagoClip_AAX builds locally (unsigned .aaxplugin), but it is not part
+# of the release yet. It needs PACE wraptool signing (iLok account, PACE eden
+# tools) and its own installer choice. When added, guard it with
+# `command -v wraptool` and skip AAX with a clear message instead of failing.
 cmake --build "$BUILD_DIR" --target TagoClip_VST3 TagoClip_AU -j "$(sysctl -n hw.ncpu)"
 
 ART="$BUILD_DIR/TagoClip_artefacts/Release"
