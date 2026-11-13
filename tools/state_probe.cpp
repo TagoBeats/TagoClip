@@ -128,6 +128,46 @@ int main()
         }
     }
 
+    // 3. Output gain routing (1.2): a state without the outputMode property comes
+    //    from 1.1.x and has to load in legacy mode, a new instance and a new save
+    //    use the wet-only mode, and the mode has to survive a round trip.
+    {
+        TagoClipProcessor fresh;
+        allOk &= report (! fresh.isLegacyOutputMode(), "new instance uses wet-only output");
+
+        juce::MemoryBlock newSave;
+        fresh.getStateInformation (newSave);
+        auto xml = juce::AudioProcessor::getXmlFromBinary (newSave.getData(), (int) newSave.getSize());
+        allOk &= report (xml != nullptr && xml->getIntAttribute (TagoClipProcessor::outputModeProperty, -1) == 1,
+                         "new save carries outputMode=1");
+
+        TagoClipProcessor reloaded;
+        reloaded.setStateInformation (newSave.getData(), (int) newSave.getSize());
+        allOk &= report (! reloaded.isLegacyOutputMode(), "round trip keeps wet-only output");
+
+        // Old state: the saved one with the property removed (what 1.1.x wrote).
+        if (xml != nullptr)
+        {
+            xml->removeAttribute (TagoClipProcessor::outputModeProperty);
+            juce::MemoryBlock old;
+            juce::AudioProcessor::copyXmlToBinary (*xml, old);
+
+            TagoClipProcessor legacy;
+            legacy.setStateInformation (old.getData(), (int) old.getSize());
+            allOk &= report (legacy.isLegacyOutputMode(), "state without outputMode loads in legacy mode");
+
+            juce::MemoryBlock resaved;
+            legacy.getStateInformation (resaved);
+            TagoClipProcessor again;
+            again.setStateInformation (resaved.getData(), (int) resaved.getSize());
+            allOk &= report (again.isLegacyOutputMode(), "round trip keeps legacy output");
+
+            // Loading a new state into an instance that held a legacy one must flip it back.
+            legacy.setStateInformation (newSave.getData(), (int) newSave.getSize());
+            allOk &= report (! legacy.isLegacyOutputMode(), "loading a new state leaves legacy mode");
+        }
+    }
+
     std::cout << (allOk ? "\nall state checks passed\n" : "\nSTATE CHECKS FAILED\n");
     return allOk ? 0 : 1;
 }

@@ -96,6 +96,7 @@ tagoclip::Parameters TagoClipProcessor::currentParameters() const noexcept
     p.monoLow = monoLowRaw->load();
     p.mix = mixRaw->load() * 0.01f;
     p.delta = deltaRaw->load() > 0.5f;
+    p.outputAfterMix = legacyOutput.load (std::memory_order_relaxed);
     return p;
 }
 
@@ -146,14 +147,21 @@ void TagoClipProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
 void TagoClipProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    if (auto xml = apvts.copyState().createXml())
+    auto state = apvts.copyState();
+    state.setProperty (outputModeProperty, legacyOutput.load() ? 0 : 1, nullptr);
+    if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
 }
 
 void TagoClipProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     if (auto xml = getXmlFromBinary (data, sizeInBytes))
+    {
+        // A state without the property was saved by 1.1.x or older.
+        legacyOutput.store (! xml->hasAttribute (outputModeProperty)
+                            || xml->getIntAttribute (outputModeProperty) == 0);
         apvts.replaceState (juce::ValueTree::fromXml (*xml));
+    }
 }
 
 juce::AudioProcessorEditor* TagoClipProcessor::createEditor()

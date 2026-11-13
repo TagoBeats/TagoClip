@@ -21,6 +21,9 @@ struct Parameters
     float monoLow = 0.0f;     // normalized log sweep, < 0.03 = off, freq = 20 * 20^v Hz
     bool delta = false;
     float mix = 1.0f;         // 0 = raw input, 1 = fully clipped; ignored in delta mode
+    // Sessions saved before 1.2 had output gain after the mix. True keeps that
+    // routing for them; new instances use the wet-only output gain.
+    bool outputAfterMix = false;
     static constexpr float monoLowOffBelow = 0.03f;
 };
 
@@ -63,8 +66,9 @@ private:
 //   mono-low (side-only LR4 highpass, pre clipper) -> drive -> curve with oversampling
 //   -> optional delta (driven dry minus wet, i.e. exactly what the curve
 //      removed, in positive polarity)
+//   -> output gain (wet side only, the dry side of the mix stays at unity;
+//      legacy sessions from before 1.2 apply it after the mix instead)
 //   -> mix (blend against the raw plugin input; skipped in delta mode)
-//   -> output gain
 // Latency is a constant 20 samples in every mode: the resampler pair costs
 // 10 + 10, the os-off path is delayed to match so toggling never moves PDC
 // (hosts compensate, the Fruity 1:1 null test still works).
@@ -170,9 +174,21 @@ public:
                 // mix never reads a stale line.
                 const float drivenDelayed = st.deltaDelay.process (driven);
                 const float dryDelayed = st.dryDelay.process (dry[c]);
-                const float blended = params.delta ? drivenDelayed - wet
-                                                   : gm * wet + (1.0f - gm) * dryDelayed;
-                data[i] = blended * go;
+                // Output gain sits on the wet side only, so the dry side of the
+                // mix stays at unity: trimming a driven wet back down no longer
+                // pulls the dry signal down with it once mix is below 100 %.
+                // Legacy sessions (saved before 1.2) keep output after the mix.
+                if (params.outputAfterMix)
+                {
+                    const float blended = params.delta ? drivenDelayed - wet
+                                                       : gm * wet + (1.0f - gm) * dryDelayed;
+                    data[i] = blended * go;
+                }
+                else
+                {
+                    data[i] = params.delta ? (drivenDelayed - wet) * go
+                                           : gm * wet * go + (1.0f - gm) * dryDelayed;
+                }
             }
         }
 
