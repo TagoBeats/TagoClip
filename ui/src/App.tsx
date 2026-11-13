@@ -6,6 +6,7 @@ import Knob from "./Knob";
 import Scope from "./Scope";
 import Meters from "./Meters";
 import GrReadout from "./GrReadout";
+import PresetMenu from "./PresetMenu";
 import { CURVE_CHIPS, OS_FACTORS, PARAMS, PRESETS, type CurveKey } from "./params";
 import { makeParam, makeToggle, type ParamHandle, type ToggleHandle } from "./bridge";
 import "./App.css";
@@ -65,6 +66,8 @@ function matchPreset(
   // match would rename the user's pick. Keep whatever is already on screen.
   return hits.includes(held) ? held : hits[0];
 }
+
+const PRESET_NAMES = PRESETS.map(([name]) => name);
 
 export default function App() {
   const params = useMemo(
@@ -129,22 +132,25 @@ export default function App() {
   const stepBase = matchedIdx >= 0 ? matchedIdx : heldIdx;
 
   return (
-    <div id="plugin" className={bypassed ? "bypassed" : ""}>
+    <div id="plugin" data-pm-bounds className={bypassed ? "bypassed" : ""}>
       <header>
         <div className="wordmark">TAGOCLIP</div>
         <div className="preset">
           <button id="prev" title="Previous preset" onClick={() => applyPreset(stepBase - 1)}>
             ‹
           </button>
-          <div className="name" id="preset-name">
-            {presetName}
-          </div>
+          <PresetMenu
+            names={PRESET_NAMES}
+            activeIdx={matchedIdx}
+            label={presetName}
+            onSelect={applyPreset}
+          />
           <button id="next" title="Next preset" onClick={() => applyPreset(stepBase + 1)}>
             ›
           </button>
         </div>
         <div className="header-right">
-          <span className="header-meta">Stereo&nbsp;·&nbsp;V1.1</span>
+          <span className="header-meta">Stereo&nbsp;·&nbsp;V1.2</span>
           <div className="header-mix">
             <Knob spec={PARAMS.mix} param={params.mix} />
           </div>
