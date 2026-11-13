@@ -1,6 +1,6 @@
 # TagoClip 1.2.0
 
-Output now only trims the processed signal, and the preset name is a menu.
+Output now only trims the processed signal, the preset name is a menu, and Pro Tools (AAX) is supported on macOS.
 
 ## Changed
 
@@ -20,15 +20,13 @@ Output now only trims the processed signal, and the preset name is a menu.
 - **Preset menu.** Click the preset name in the header to open the full list
   and pick any preset directly. The arrows still step through the list, and the
   name still shows CUSTOM as soon as you move a knob away from a preset.
-
-## Coming
-
-- **AAX for Pro Tools** is in the works and not part of this download yet.
+- **Pro Tools (AAX) on macOS.** TagoClip now comes as an AAX plugin for Pro
+  Tools, mono and stereo, signed for Pro Tools. Windows AAX follows later.
 
 ## Install
 
 - **macOS 11+:** open the `.dmg`, run the `.pkg` inside and pick the formats you
-  want (AU + VST3, notarized).
+  want (AU + VST3 + AAX, notarized).
 - **Windows:** unzip and drop the `.vst3` into your VST3 folder.
 
 Settings and presets from earlier versions carry over unchanged.

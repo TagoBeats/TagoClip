@@ -16,12 +16,19 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 add_subdirectory(third_party/JUCE)
 
+# AAX (Pro Tools) is macOS only for now. Windows keeps building VST3 only until
+# Windows AAX signing is possible.
+set(TAGOCLIP_FORMATS AU VST3 Standalone)
+if(APPLE)
+    list(APPEND TAGOCLIP_FORMATS AAX)
+endif()
+
 juce_add_plugin(TagoClip
     COMPANY_NAME "TagoBeats"
     BUNDLE_ID com.tagobeats.tagoclip
     PLUGIN_MANUFACTURER_CODE Tago
     PLUGIN_CODE TgCl
-    FORMATS AU VST3 AAX Standalone
+    FORMATS ${TAGOCLIP_FORMATS}
     PRODUCT_NAME "TagoClip"
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
@@ -29,7 +36,7 @@ juce_add_plugin(TagoClip
     # juce_set_aax_sdk_path needed). The identifier must stay stable once a
     # build ships, Pro Tools keys presets and sessions on it. Mono and stereo
     # in/out are declared by TagoClipProcessor::isBusesLayoutSupported.
-    # Signing needs PACE wraptool, see the TODO in scripts/build_release.sh.
+    # Signing needs PACE wraptool, see scripts/sign_aax.sh.
     AAX_IDENTIFIER com.tagobeats.tagoclip
     AAX_CATEGORY Dynamics
     NEEDS_WEB_BROWSER TRUE
