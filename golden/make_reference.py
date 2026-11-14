@@ -7,8 +7,11 @@ mirrored 1:1 by plugin/ClipEngine.h:
 
     mono-low (side-only LR4 highpass, pre clipper) -> drive -> curve with oversampling
     -> optional delta (driven dry minus wet, exactly what the curve removed)
+    -> output gain (wet side only, the dry side of the mix stays at unity)
     -> mix (blend against the raw plugin input; skipped in delta mode)
-    -> output gain
+
+Configs with "legacy_output": 1 mirror sessions saved before 1.2, where output
+gain sat after the mix.
 
 Run with the tagodsp venv python:
     ~/Documents/tagodsp/.venv/bin/python golden/make_reference.py
@@ -42,9 +45,16 @@ CONFIGS = [
     {"name": "delta_listen",   "curve": "fl",   "threshold": 84,  "drive": 6.0, "os": 8, "output": 0.0,  "monolow": 0.0,  "delta": 1, "mix": 1.0},
     # v1.1 mix: parallel clipping, the case the r/trapproduction thread asked for.
     {"name": "mix_parallel",   "curve": "fl",   "threshold": 64,  "drive": 9.0, "os": 8, "output": 0.0,  "monolow": 0.0,  "delta": 0, "mix": 0.5},
-    # Dry is the raw plugin input, so at mix 0 the output is the input times the
-    # output gain even with mono-low on. Red on the old L/R crossover, which ran
-    # the dry side through the crossover allpass.
+    # Parallel clip with a driven wet trimmed back down: output gain must only
+    # touch the wet side. Red on the old chain, which ran output gain after the
+    # mix and pulled the dry side down by 10 dB as well.
+    {"name": "mix_parallel_trim", "curve": "fl", "threshold": 64, "drive": 12.0, "os": 8, "output": -10.0, "monolow": 0.0, "delta": 0, "mix": 0.5},
+    # Same settings as a session saved before 1.2 loads them: output after the mix.
+    {"name": "mix_parallel_trim_legacy", "curve": "fl", "threshold": 64, "drive": 12.0, "os": 8, "output": -10.0, "monolow": 0.0, "delta": 0, "mix": 0.5, "legacy_output": 1},
+    # Dry is the raw plugin input and output gain only trims the wet side, so at
+    # mix 0 the output is the input itself, even with mono-low on and output at
+    # -1 dB. Red on the old L/R crossover, which ran the dry side through the
+    # crossover allpass.
     {"name": "mix_dry_only",   "curve": "fl",   "threshold": 84,  "drive": 6.0, "os": 4, "output": -1.0, "monolow": 0.67, "delta": 0, "mix": 0.0},
     # Mix must not touch the delta path: same render as delta_listen.
     {"name": "mix_delta_safe", "curve": "fl",   "threshold": 84,  "drive": 6.0, "os": 8, "output": 0.0,  "monolow": 0.0,  "delta": 1, "mix": 0.25},
@@ -88,14 +98,16 @@ def render(cfg: dict, x: np.ndarray) -> np.ndarray:
         y = MonoLow(freq=20.0 * 20.0 ** cfg["monolow"], sr=SR).process(y)
     clip = Clipper(cfg["curve"], cfg["threshold"] / 128.0, cfg["os"], drive_db=cfg["drive"])
     wet = np.column_stack([clip.process(y[:, c]) for c in range(2)])
+    out = db_to_lin(cfg["output"])
     if cfg["delta"]:
         # Delta is a listening tool, mix stays out of it.
-        wet = y * db_to_lin(cfg["drive"]) - wet
-    else:
-        # Dry is the raw plugin input: pre drive, pre mono-low (Robin, 17.09.2026).
-        # Mono-low leaves the mid untouched, so no allpass matching is needed.
-        wet = dry_wet(x, wet, cfg["mix"])
-    return wet * db_to_lin(cfg["output"])
+        return (y * db_to_lin(cfg["drive"]) - wet) * out
+    # Dry is the raw plugin input: pre drive, pre mono-low (Robin, 17.09.2026).
+    # Mono-low leaves the mid untouched, so no allpass matching is needed.
+    if cfg.get("legacy_output", 0):
+        return dry_wet(x, wet, cfg["mix"]) * out
+    # Output gain trims the wet side only, the dry side stays at unity.
+    return dry_wet(x, wet * out, cfg["mix"])
 
 
 def main():

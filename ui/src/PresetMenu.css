@@ -1,0 +1,41 @@
+/* Preset label and its dropdown. Tokens come from the host app's :root. */
+.pm { position: relative; }
+
+.preset .pm-label {
+  display: block;
+  min-width: 118px; text-align: center;
+  padding: 2px 0;
+  font: 700 10px "Martian Mono", monospace;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--text);
+  background: none; border: 0; cursor: pointer;
+}
+.preset .pm-label:hover,
+.preset .pm-label.open { color: var(--text-hi); }
+
+.pm-list {
+  position: absolute;
+  transform: translateX(-50%);
+  min-width: 136px;
+  z-index: 20;
+  user-select: none; -webkit-user-select: none;
+  list-style: none;
+  padding: 3px;
+  overflow-y: auto;
+  background: var(--bg-deep);
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+  font-family: "Martian Mono", monospace;
+}
+.pm-list li {
+  padding: 5px 10px;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  white-space: nowrap; text-align: center;
+  color: var(--dim);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.pm-list li.hl { background: var(--surface); color: var(--text-hi); }
+.pm-list li.active { color: var(--accent); }

@@ -5,7 +5,7 @@
 //
 // Usage: TagoClipRender in.wav out.wav <fl|hard|tanh> <threshold 1-127>
 //        <drive_db> <os 1|4|8> <output_db> <mono_low 0..1> <delta 0|1>
-//        <mix 0..1> [block]
+//        <mix 0..1> [block] [legacy_output 0|1]
 
 #include <cstdlib>
 #include <iostream>
@@ -20,7 +20,7 @@ int main (int argc, char* argv[])
     {
         std::cerr << "usage: TagoClipRender in.wav out.wav <fl|hard|tanh> <threshold 1-127> "
                      "<drive_db> <os 1|4|8> <output_db> <mono_low 0..1> <delta 0|1> "
-                     "<mix 0..1> [block]\n";
+                     "<mix 0..1> [block] [legacy_output 0|1]\n";
         return 1;
     }
 
@@ -40,6 +40,7 @@ int main (int argc, char* argv[])
     params.delta = atoi (argv[9]) != 0;
     params.mix = (float) atof (argv[10]);
     const int blockSize = argc > 11 ? atoi (argv[11]) : 512;
+    params.outputAfterMix = argc > 12 && atoi (argv[12]) != 0;
 
     juce::AudioFormatManager formats;
     formats.registerBasicFormats();

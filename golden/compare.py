@@ -47,6 +47,7 @@ def run_cli(binary: Path, cfg: dict, out_path: Path, block: int) -> str:
         str(cfg["delta"]),
         str(cfg["mix"]),
         str(block),
+        str(cfg.get("legacy_output", 0)),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
     return result.stdout.strip()

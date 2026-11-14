@@ -50,6 +50,13 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 
+    // Output gain routing. Sessions saved before 1.2 carry no outputMode
+    // property and keep the old routing (output after the mix); new instances
+    // and new saves use the wet-only output gain. The mode survives a round
+    // trip, so a legacy project never changes its sound on reload.
+    static constexpr auto outputModeProperty = "outputMode"; // 1 = wet only
+    bool isLegacyOutputMode() const noexcept { return legacyOutput.load (std::memory_order_relaxed); }
+
     // Block peaks for the UI meters (in = pre chain, out = post gain).
     // Written on the audio thread, read by the editor's timer.
     float readInputPeak() noexcept { return inputPeak.exchange (0.0f, std::memory_order_relaxed); }
@@ -75,6 +82,7 @@ private:
     std::atomic<float>* deltaRaw = nullptr;
 
     tagoclip::ClipEngine engine;
+    std::atomic<bool> legacyOutput { false };
 
     std::atomic<float> inputPeak { 0.0f };
     std::atomic<float> outputPeak { 0.0f };
