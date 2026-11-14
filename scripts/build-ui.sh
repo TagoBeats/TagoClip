@@ -8,8 +8,11 @@ cd "$(dirname "$0")/../ui"
 # carries new timestamps, so the plugin binary relinks even if nothing changed,
 # which would invalidate an already PACE-signed AAX. FORCE_UI=1 always rebuilds.
 if [[ "${FORCE_UI:-0}" != "1" && -f webui.zip ]]; then
-    newer=$(find src public index.html package.json package-lock.json vite.config.* \
-        -newer webui.zip 2>/dev/null | head -n 1)
+    srcs=()
+    for p in src public index.html package.json package-lock.json vite.config.*; do
+        [[ -e "$p" ]] && srcs+=("$p")
+    done
+    newer=$(find "${srcs[@]}" -newer webui.zip 2>/dev/null | head -n 1 || true)
     if [[ -z "$newer" ]]; then
         echo "ui/webui.zip is up to date, skipping UI build"
         exit 0
